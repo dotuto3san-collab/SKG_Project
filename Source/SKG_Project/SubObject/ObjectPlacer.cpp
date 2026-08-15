@@ -3,6 +3,13 @@
 
 #include "ObjectPlacer.h"
 
+void AObjectPlacer::BeginPlay()
+{
+    Super::BeginPlay();
+    bShowMouseCursor = true;
+    SetInputMode(FInputModeGameAndUI());
+}
+
 void AObjectPlacer::SetupInputComponent()
 {
     Super::SetupInputComponent();
