@@ -18,9 +18,8 @@ void AObjectPlacer::SetupInputComponent()
 
 void AObjectPlacer::OnLeftClick()
 {
-    FHitResult Hit;
-    if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+    if (GEngine)
     {
-        GetWorld()->SpawnActor<AActor>(ObjectToSpawn, Hit.Location, FRotator::ZeroRotator);
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("クリックされました！"));
     }
 }
