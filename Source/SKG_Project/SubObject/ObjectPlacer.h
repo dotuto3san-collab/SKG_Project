@@ -23,4 +23,10 @@ protected:
 
     UPROPERTY(EditDefaultsOnly)
     TSubclassOf<AActor> ObjectToSpawn;
+
+    UPROPERTY()
+    TArray<AActor*> PlacedObjects;
+
+    UPROPERTY()
+    AActor* SelectedObject = nullptr;
 };

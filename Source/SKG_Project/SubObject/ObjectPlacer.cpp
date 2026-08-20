@@ -18,8 +18,35 @@ void AObjectPlacer::SetupInputComponent()
 
 void AObjectPlacer::OnLeftClick()
 {
-    if (GEngine)
+    FHitResult Hit;
+    if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
     {
-        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("クリックされました！"));
+        AActor* HitActor = Hit.GetActor();
+
+        // すでに置いてあるオブジェクトをクリックした場合 → 選択
+        if (HitActor && PlacedObjects.Contains(HitActor))
+        {
+            SelectedObject = HitActor;
+
+            if (GEngine)
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan, TEXT("Selected!"));
+            }
+            return; // ここで処理終了、新規配置はしない
+        }
+        // それ以外(床など何もない場所)をクリックした場合 → 新規配置
+        FVector PlacementLocation = Hit.Location + FVector(0.f, 0.f, 50.f);
+        AActor* NewObject = GetWorld()->SpawnActor<AActor>(ObjectToSpawn, PlacementLocation, FRotator::ZeroRotator);
+
+        if (NewObject)
+        {
+            PlacedObjects.Add(NewObject);
+
+            if (GEngine)
+            {
+                FString Msg = FString::Printf(TEXT("Count: %d"), PlacedObjects.Num());
+                GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, Msg);
+            }
+        }
     }
 }
