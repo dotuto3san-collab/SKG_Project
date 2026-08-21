@@ -21,6 +21,8 @@ protected:
     UFUNCTION()
     void OnLeftClick();
 
+    void SetObjectColor(AActor* TargetActor, FLinearColor Color);
+
     UPROPERTY(EditDefaultsOnly)
     TSubclassOf<AActor> ObjectToSpawn;
 
@@ -29,4 +31,7 @@ protected:
 
     UPROPERTY()
     AActor* SelectedObject = nullptr;
+
+    UPROPERTY()
+    FLinearColor OriginalColor = FLinearColor::White;
 };

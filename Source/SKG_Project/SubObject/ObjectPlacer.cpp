@@ -26,7 +26,28 @@ void AObjectPlacer::OnLeftClick()
         // すでに置いてあるオブジェクトをクリックした場合 → 選択
         if (HitActor && PlacedObjects.Contains(HitActor))
         {
+            // 前に選択していたものがあれば、覚えておいた元の色に戻す
+            if (SelectedObject)
+            {
+                SetObjectColor(SelectedObject, OriginalColor);
+            }
+
+            // 新しく選択するオブジェクトの「今の色」を覚えておく
+            if (UStaticMeshComponent* Mesh = HitActor->FindComponentByClass<UStaticMeshComponent>())
+            {
+                UMaterialInstanceDynamic* DynMat = Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0));
+                if (DynMat)
+                {
+                    DynMat->GetVectorParameterValue(FName("Color"), OriginalColor);
+                }
+                else
+                {
+                    OriginalColor = FLinearColor::White; // まだ一度も選択されたことがなければデフォルト白
+                }
+            }
+
             SelectedObject = HitActor;
+            SetObjectColor(SelectedObject, FLinearColor::Yellow);
 
             if (GEngine)
             {
@@ -41,12 +62,27 @@ void AObjectPlacer::OnLeftClick()
         if (NewObject)
         {
             PlacedObjects.Add(NewObject);
+            SetObjectColor(NewObject, FLinearColor::White);
 
             if (GEngine)
             {
                 FString Msg = FString::Printf(TEXT("Count: %d"), PlacedObjects.Num());
                 GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, Msg);
             }
+        }
+    }
+}
+
+void AObjectPlacer::SetObjectColor(AActor* TargetActor, FLinearColor Color)
+{
+    if (!TargetActor) return;
+
+    if (UStaticMeshComponent* Mesh = TargetActor->FindComponentByClass<UStaticMeshComponent>())
+    {
+        UMaterialInstanceDynamic* DynMat = Mesh->CreateAndSetMaterialInstanceDynamic(0);
+        if (DynMat)
+        {
+            DynMat->SetVectorParameterValue(FName("Color"), Color);
         }
     }
 }
