@@ -2,6 +2,7 @@
 
 
 #include "ObjectPlacer.h"
+#include "TransformerPawn.h"
 
 void AObjectPlacer::BeginPlay()
 {
@@ -26,32 +27,9 @@ void AObjectPlacer::OnLeftClick()
         // すでに置いてあるオブジェクトをクリックした場合 → 選択
         if (HitActor && PlacedObjects.Contains(HitActor))
         {
-            // 前に選択していたものがあれば、覚えておいた元の色に戻す
-            if (SelectedObject)
+            if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
             {
-                SetObjectColor(SelectedObject, OriginalColor);
-            }
-
-            // 新しく選択するオブジェクトの「今の色」を覚えておく
-            if (UStaticMeshComponent* Mesh = HitActor->FindComponentByClass<UStaticMeshComponent>())
-            {
-                UMaterialInstanceDynamic* DynMat = Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0));
-                if (DynMat)
-                {
-                    DynMat->GetVectorParameterValue(FName("Color"), OriginalColor);
-                }
-                else
-                {
-                    OriginalColor = FLinearColor::White; // まだ一度も選択されたことがなければデフォルト白
-                }
-            }
-
-            SelectedObject = HitActor;
-            SetObjectColor(SelectedObject, FLinearColor::Yellow);
-
-            if (GEngine)
-            {
-                GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan, TEXT("Selected!"));
+                TransformerPawn->SelectActor(HitActor);
             }
             return; // ここで処理終了、新規配置はしない
         }
