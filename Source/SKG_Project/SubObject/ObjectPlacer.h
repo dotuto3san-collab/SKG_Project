@@ -17,9 +17,12 @@ class SKG_PROJECT_API AObjectPlacer : public APlayerController
 protected:
     virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;
+    virtual void Tick(float DeltaTime) override;
 
     UFUNCTION()
-    void OnLeftClick();
+    void OnLeftClickPressed();
+    void OnLeftClickReleased();
+    bool bIsLeftMouseDown = false;
 
     void SetObjectColor(AActor* TargetActor, FLinearColor Color);
 

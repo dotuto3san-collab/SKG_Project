@@ -14,11 +14,14 @@ void AObjectPlacer::BeginPlay()
 void AObjectPlacer::SetupInputComponent()
 {
     Super::SetupInputComponent();
-    InputComponent->BindAction("LeftClick", IE_Pressed, this, &AObjectPlacer::OnLeftClick);
+    InputComponent->BindAction("LeftClick", IE_Pressed, this, &AObjectPlacer::OnLeftClickPressed);
+    InputComponent->BindAction("LeftClick", IE_Released, this, &AObjectPlacer::OnLeftClickReleased);
 }
 
-void AObjectPlacer::OnLeftClick()
+void AObjectPlacer::OnLeftClickPressed()
 {
+    bIsLeftMouseDown = true;
+
     FHitResult Hit;
     if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
     {
@@ -51,6 +54,28 @@ void AObjectPlacer::OnLeftClick()
     }
 }
 
+void AObjectPlacer::OnLeftClickReleased()
+{
+    bIsLeftMouseDown = false;
+
+    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    {
+        TransformerPawn->ClearDomain();
+    }
+}
+
+void AObjectPlacer::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    if (bIsLeftMouseDown)
+    {
+        if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+        {
+            TransformerPawn->MouseTraceByChannel(10000.f, ECC_Visibility, TArray<AActor*>(), false);
+        }
+    }
+}
 void AObjectPlacer::SetObjectColor(AActor* TargetActor, FLinearColor Color)
 {
     if (!TargetActor) return;
