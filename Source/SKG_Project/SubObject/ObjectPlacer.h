@@ -20,7 +20,7 @@ protected:
     virtual void Tick(float DeltaTime) override;
 
     UFUNCTION()
-    void OnLeftClickPressed();
+    void OnLeftClick();
     void OnLeftClickReleased();
     bool bIsLeftMouseDown = false;
 

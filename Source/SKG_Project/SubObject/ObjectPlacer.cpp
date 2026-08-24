@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "ObjectPlacer.h"
 #include "TransformerPawn.h"
 
@@ -14,54 +11,9 @@ void AObjectPlacer::BeginPlay()
 void AObjectPlacer::SetupInputComponent()
 {
     Super::SetupInputComponent();
-    InputComponent->BindAction("LeftClick", IE_Pressed, this, &AObjectPlacer::OnLeftClickPressed);
+    InputComponent->BindAction("LeftClick", IE_Pressed, this, &AObjectPlacer::OnLeftClick);
     InputComponent->BindAction("LeftClick", IE_Released, this, &AObjectPlacer::OnLeftClickReleased);
-}
 
-void AObjectPlacer::OnLeftClickPressed()
-{
-    bIsLeftMouseDown = true;
-
-    FHitResult Hit;
-    if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
-    {
-        AActor* HitActor = Hit.GetActor();
-
-        // すでに置いてあるオブジェクトをクリックした場合 → 選択
-        if (HitActor && PlacedObjects.Contains(HitActor))
-        {
-            if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
-            {
-                TransformerPawn->SelectActor(HitActor);
-            }
-            return; // ここで処理終了、新規配置はしない
-        }
-        // それ以外(床など何もない場所)をクリックした場合 → 新規配置
-        FVector PlacementLocation = Hit.Location + FVector(0.f, 0.f, 50.f);
-        AActor* NewObject = GetWorld()->SpawnActor<AActor>(ObjectToSpawn, PlacementLocation, FRotator::ZeroRotator);
-
-        if (NewObject)
-        {
-            PlacedObjects.Add(NewObject);
-            SetObjectColor(NewObject, FLinearColor::White);
-
-            if (GEngine)
-            {
-                FString Msg = FString::Printf(TEXT("Count: %d"), PlacedObjects.Num());
-                GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, Msg);
-            }
-        }
-    }
-}
-
-void AObjectPlacer::OnLeftClickReleased()
-{
-    bIsLeftMouseDown = false;
-
-    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
-    {
-        TransformerPawn->ClearDomain();
-    }
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -76,6 +28,62 @@ void AObjectPlacer::Tick(float DeltaTime)
         }
     }
 }
+
+void AObjectPlacer::OnLeftClick()
+{
+    FHitResult Hit;
+    if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+    {
+        AActor* HitActor = Hit.GetActor();
+
+        // すでに置いてあるオブジェクトをクリックした場合 → 選択
+        if (HitActor && PlacedObjects.Contains(HitActor))
+        {
+            SelectedObject = HitActor;
+            bIsLeftMouseDown = true;   // ← ここだけに移動
+
+            if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+            {
+                TransformerPawn->SelectActor(HitActor);
+            }
+            return;
+        }
+
+        // 何か選択中の状態で、それ以外をクリックした場合 → 選択解除のみ
+        if (SelectedObject)
+        {
+            SelectedObject = nullptr;
+
+            if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+            {
+                TransformerPawn->DeselectAll();
+            }
+            return;
+        }
+
+        // 何も選択されておらず、何もない場所をクリックした場合のみ → 新規配置
+        // (ここでは bIsLeftMouseDown を true にしない)
+        FVector PlacementLocation = Hit.Location + FVector(0.f, 0.f, 50.f);
+        AActor* NewObject = GetWorld()->SpawnActor<AActor>(ObjectToSpawn, PlacementLocation, FRotator::ZeroRotator);
+
+        if (NewObject)
+        {
+            PlacedObjects.Add(NewObject);
+            SetObjectColor(NewObject, FLinearColor::White);
+        }
+    }
+}
+
+void AObjectPlacer::OnLeftClickReleased()
+{
+    bIsLeftMouseDown = false;
+
+    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    {
+        TransformerPawn->ClearDomain();
+    }
+}
+
 void AObjectPlacer::SetObjectColor(AActor* TargetActor, FLinearColor Color)
 {
     if (!TargetActor) return;
