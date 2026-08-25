@@ -24,7 +24,13 @@ void AObjectPlacer::Tick(float DeltaTime)
     {
         if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
         {
-            TransformerPawn->MouseTraceByChannel(10000.f, ECC_Visibility, TArray<AActor*>(), false);
+            FVector WorldLocation, WorldDirection;
+            if (DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
+            {
+                FVector LookingVector = PlayerCameraManager ? PlayerCameraManager->GetCameraRotation().Vector() : WorldDirection;
+
+                TransformerPawn->UpdateTransform(LookingVector, WorldLocation, WorldDirection);
+            }
         }
     }
 }
@@ -45,6 +51,17 @@ void AObjectPlacer::OnLeftClick()
             if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
             {
                 TransformerPawn->SelectActor(HitActor);
+            }
+            return;
+        }
+
+        if (HitActor && HitActor->GetClass()->GetName().Contains(TEXT("Gizmo")))
+        {
+            bIsLeftMouseDown = true;
+
+            if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+            {
+                TransformerPawn->MouseTraceByChannel(10000.f, ECC_Visibility, TArray<AActor*>(), false);
             }
             return;
         }
@@ -72,6 +89,7 @@ void AObjectPlacer::OnLeftClick()
             SetObjectColor(NewObject, FLinearColor::White);
         }
     }
+
 }
 
 void AObjectPlacer::OnLeftClickReleased()

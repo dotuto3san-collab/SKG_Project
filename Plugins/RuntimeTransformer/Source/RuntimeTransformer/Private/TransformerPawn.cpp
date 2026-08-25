@@ -227,7 +227,13 @@ bool ATransformerPawn::MouseTraceByChannel(float TraceDistance
 		if (!bTraceSuccessful && !bAppendToList)
 			ServerDeselectAll(false);
 	}
-	return false;
+
+	if (GEngine)
+	{
+		FString Msg = FString::Printf(TEXT("[PLUGIN] bTraceSuccessful = %s"), bTraceSuccessful ? TEXT("true") : TEXT("false"));
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Cyan, Msg);
+	}
+	return bTraceSuccessful;
 }
 
 bool ATransformerPawn::MouseTraceByProfile(float TraceDistance
