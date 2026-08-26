@@ -22,6 +22,9 @@ protected:
     UFUNCTION()
     void OnLeftClick();
     void OnLeftClickReleased();
+    void OnScaleModeKeyPressed();
+    void OnTranslationModeKeyPressed();
+    void OnRotationModeKeyPressed();
     bool bIsLeftMouseDown = false;
 
     void SetObjectColor(AActor* TargetActor, FLinearColor Color);

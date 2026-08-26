@@ -13,7 +13,9 @@ void AObjectPlacer::SetupInputComponent()
     Super::SetupInputComponent();
     InputComponent->BindAction("LeftClick", IE_Pressed, this, &AObjectPlacer::OnLeftClick);
     InputComponent->BindAction("LeftClick", IE_Released, this, &AObjectPlacer::OnLeftClickReleased);
-
+    InputComponent->BindAction("ScaleMode", IE_Pressed, this, &AObjectPlacer::OnScaleModeKeyPressed);
+    InputComponent->BindAction("TranslationMode", IE_Pressed, this, &AObjectPlacer::OnTranslationModeKeyPressed);
+    InputComponent->BindAction("RotationMode", IE_Pressed, this, &AObjectPlacer::OnRotationModeKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -99,6 +101,30 @@ void AObjectPlacer::OnLeftClickReleased()
     if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
     {
         TransformerPawn->ClearDomain();
+    }
+}
+
+void AObjectPlacer::OnScaleModeKeyPressed()
+{
+    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    {
+        TransformerPawn->SetTransformationType(ETransformationType::TT_Scale);
+    }
+}
+
+void AObjectPlacer::OnTranslationModeKeyPressed()
+{
+    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    {
+        TransformerPawn->SetTransformationType(ETransformationType::TT_Translation);
+    }
+}
+
+void AObjectPlacer::OnRotationModeKeyPressed()
+{
+    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    {
+        TransformerPawn->SetTransformationType(ETransformationType::TT_Rotation);
     }
 }
 
