@@ -40,15 +40,29 @@ void AObjectPlacer::Tick(float DeltaTime)
 void AObjectPlacer::OnLeftClick()
 {
     FHitResult Hit;
-    if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+    FCollisionQueryParams Params;
+
+    if (SelectedObject)
+    {
+        Params.AddIgnoredActor(SelectedObject);
+    }
+
+    FVector WorldLocation, WorldDirection;
+    if (DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
+    {
+        FVector TraceEnd = WorldLocation + WorldDirection * 10000.f;
+        GetWorld()->LineTraceSingleByChannel(Hit, WorldLocation, TraceEnd, ECC_Visibility, Params);
+    }
+
+    if (Hit.bBlockingHit)
     {
         AActor* HitActor = Hit.GetActor();
 
-        // すでに置いてあるオブジェクトをクリックした場合 → 選択
+        // ↓ ここを元に戻す
         if (HitActor && PlacedObjects.Contains(HitActor))
         {
             SelectedObject = HitActor;
-            bIsLeftMouseDown = true;   // ← ここだけに移動
+            bIsLeftMouseDown = true;
 
             if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
             {
@@ -63,12 +77,17 @@ void AObjectPlacer::OnLeftClick()
 
             if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
             {
-                TransformerPawn->MouseTraceByChannel(10000.f, ECC_Visibility, TArray<AActor*>(), false);
+                TArray<AActor*> IgnoreList;
+                if (SelectedObject)
+                {
+                    IgnoreList.Add(SelectedObject);
+                }
+
+                TransformerPawn->MouseTraceByChannel(10000.f, ECC_Visibility, IgnoreList, false);   // ← 空配列ではなく IgnoreList を渡す
             }
             return;
         }
 
-        // 何か選択中の状態で、それ以外をクリックした場合 → 選択解除のみ
         if (SelectedObject)
         {
             SelectedObject = nullptr;
@@ -80,8 +99,6 @@ void AObjectPlacer::OnLeftClick()
             return;
         }
 
-        // 何も選択されておらず、何もない場所をクリックした場合のみ → 新規配置
-        // (ここでは bIsLeftMouseDown を true にしない)
         FVector PlacementLocation = Hit.Location + FVector(0.f, 0.f, 50.f);
         AActor* NewObject = GetWorld()->SpawnActor<AActor>(ObjectToSpawn, PlacementLocation, FRotator::ZeroRotator);
 
@@ -91,7 +108,6 @@ void AObjectPlacer::OnLeftClick()
             SetObjectColor(NewObject, FLinearColor::White);
         }
     }
-
 }
 
 void AObjectPlacer::OnLeftClickReleased()
