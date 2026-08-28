@@ -6,6 +6,11 @@ void AObjectPlacer::BeginPlay()
     Super::BeginPlay();
     bShowMouseCursor = true;
     SetInputMode(FInputModeGameAndUI());
+
+    if (TestAsset)
+    {
+        SetSelectedObject(TestAsset);
+    }
 }
 
 void AObjectPlacer::SetupInputComponent()
@@ -16,6 +21,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("ScaleMode", IE_Pressed, this, &AObjectPlacer::OnScaleModeKeyPressed);
     InputComponent->BindAction("TranslationMode", IE_Pressed, this, &AObjectPlacer::OnTranslationModeKeyPressed);
     InputComponent->BindAction("RotationMode", IE_Pressed, this, &AObjectPlacer::OnRotationModeKeyPressed);
+    InputComponent->BindAction("SwitchObject", IE_Pressed, this, &AObjectPlacer::OnSwitchObjectKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -100,7 +106,7 @@ void AObjectPlacer::OnLeftClick()
         }
 
         FVector PlacementLocation = Hit.Location + FVector(0.f, 0.f, 50.f);
-        AActor* NewObject = GetWorld()->SpawnActor<AActor>(ObjectToSpawn, PlacementLocation, FRotator::ZeroRotator);
+        AActor* NewObject = GetWorld()->SpawnActor<AActor>(SelectedObjectClass, PlacementLocation, FRotator::ZeroRotator);
 
         if (NewObject)
         {
@@ -155,5 +161,25 @@ void AObjectPlacer::SetObjectColor(AActor* TargetActor, FLinearColor Color)
         {
             DynMat->SetVectorParameterValue(FName("Color"), Color);
         }
+    }
+}
+
+void AObjectPlacer::SetSelectedObject(UPlaceableObjectAsset* ObjectAsset)
+{
+    if (ObjectAsset)
+    {
+        SelectedObjectClass = ObjectAsset->ActorClass;
+    }
+}
+
+void AObjectPlacer::OnSwitchObjectKeyPressed()
+{
+    if (SelectedObjectClass == TestAsset->ActorClass)
+    {
+        SetSelectedObject(TestAsset2);
+    }
+    else
+    {
+        SetSelectedObject(TestAsset);
     }
 }

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "PlaceableObjectAsset.h"
 #include "ObjectPlacer.generated.h"
 
 /**
@@ -29,8 +30,14 @@ protected:
 
     void SetObjectColor(AActor* TargetActor, FLinearColor Color);
 
-    UPROPERTY(EditDefaultsOnly)
-    TSubclassOf<AActor> ObjectToSpawn;
+    //UPROPERTY(EditDefaultsOnly)
+    //TSubclassOf<AActor> ObjectToSpawn;
+
+    UPROPERTY()
+    TSubclassOf<AActor> SelectedObjectClass;
+
+    UFUNCTION(BlueprintCallable)
+    void SetSelectedObject(UPlaceableObjectAsset* ObjectAsset);
 
     UPROPERTY()
     TArray<AActor*> PlacedObjects;
@@ -40,4 +47,13 @@ protected:
 
     UPROPERTY()
     FLinearColor OriginalColor = FLinearColor::White;
+
+    UPROPERTY(EditDefaultsOnly)
+    UPlaceableObjectAsset* TestAsset;
+
+    UPROPERTY(EditDefaultsOnly)
+    UPlaceableObjectAsset* TestAsset2;
+
+    UFUNCTION()
+    void OnSwitchObjectKeyPressed();
 };
