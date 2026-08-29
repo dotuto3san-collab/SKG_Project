@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "PlaceableObjectAsset.h"
+#include "ObjectHUDWidget.h"
 #include "ObjectPlacer.generated.h"
 
 /**
@@ -56,4 +57,21 @@ protected:
 
     UFUNCTION()
     void OnSwitchObjectKeyPressed();
+
+    UPROPERTY(EditDefaultsOnly)
+    TSubclassOf<class UUserWidget> ObjectHUDClass;
+
+    UPROPERTY()
+    class UObjectHUDWidget* ObjectHUDInstance;
+
+    UPROPERTY(EditDefaultsOnly, Category = "HUD")
+    TSubclassOf<UObjectHUDWidget> HUDWidgetClass;
+
+    UPROPERTY()
+    UObjectHUDWidget* HUDWidgetInstance = nullptr;
+
+    UPROPERTY(EditAnywhere, Category = "HUD")
+    bool bShowDebugHUD = true;
+
+    void UpdateHUDText();
 };

@@ -1,4 +1,4 @@
-#include "ObjectPlacer.h"
+ï»¿#include "ObjectPlacer.h"
 #include "TransformerPawn.h"
 
 void AObjectPlacer::BeginPlay()
@@ -6,6 +6,15 @@ void AObjectPlacer::BeginPlay()
     Super::BeginPlay();
     bShowMouseCursor = true;
     SetInputMode(FInputModeGameAndUI());
+
+    if (bShowDebugHUD && HUDWidgetClass)
+    {
+        HUDWidgetInstance = CreateWidget<UObjectHUDWidget>(this, HUDWidgetClass);
+        if (HUDWidgetInstance)
+        {
+            HUDWidgetInstance->AddToViewport();
+        }
+    }
 
     if (TestAsset)
     {
@@ -64,7 +73,7 @@ void AObjectPlacer::OnLeftClick()
     {
         AActor* HitActor = Hit.GetActor();
 
-        // « ‚±‚±‚ðŒ³‚É–ß‚·
+        // â†“ ã“ã“ã‚’å…ƒã«æˆ»ã™
         if (HitActor && PlacedObjects.Contains(HitActor))
         {
             SelectedObject = HitActor;
@@ -89,7 +98,7 @@ void AObjectPlacer::OnLeftClick()
                     IgnoreList.Add(SelectedObject);
                 }
 
-                TransformerPawn->MouseTraceByChannel(10000.f, ECC_Visibility, IgnoreList, false);   // © ‹ó”z—ñ‚Å‚Í‚È‚­ IgnoreList ‚ð“n‚·
+                TransformerPawn->MouseTraceByChannel(10000.f, ECC_Visibility, IgnoreList, false);
             }
             return;
         }
@@ -170,6 +179,8 @@ void AObjectPlacer::SetSelectedObject(UPlaceableObjectAsset* ObjectAsset)
     {
         SelectedObjectClass = ObjectAsset->ActorClass;
     }
+
+    UpdateHUDText();
 }
 
 void AObjectPlacer::OnSwitchObjectKeyPressed()
@@ -182,4 +193,21 @@ void AObjectPlacer::OnSwitchObjectKeyPressed()
     {
         SetSelectedObject(TestAsset);
     }
+}
+
+void AObjectPlacer::UpdateHUDText()
+{
+    if (!bShowDebugHUD || !HUDWidgetInstance)
+    {
+        return;
+    }
+
+    FText DisplayText = FText::FromString(TEXT("æœªé¸æŠž"));
+
+    if (SelectedObjectClass)
+    {
+        DisplayText = FText::FromString(SelectedObjectClass->GetName());
+    }
+
+    HUDWidgetInstance->SetCurrentObjectText(DisplayText);
 }
