@@ -8,7 +8,7 @@ public class SKG_Project : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "RuntimeTransformer" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "RuntimeTransformer", "UMG" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "DesktopPlatform" });
 
