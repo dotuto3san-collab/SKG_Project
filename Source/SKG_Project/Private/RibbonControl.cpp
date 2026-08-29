@@ -33,6 +33,26 @@ void URibbonControl::ImportPointCloud()
 
 void URibbonControl::LoadSceneFile()
 {
+	IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
+	if (DesktopPlatform)
+	{
+		TArray<FString> OutFiles;
+		bool bOpened = DesktopPlatform->OpenFileDialog(
+			nullptr,
+			TEXT("Selected Scene"),
+			TEXT(""),
+			TEXT(""),
+			TEXT("Scene Files (*.json;*.scene)|*.json;*.scene|All Files (*.*)|*.*"),
+			EFileDialogFlags::None,
+			OutFiles
+		);
+
+		if (bOpened && OutFiles.Num() > 0)
+		{
+			const FString SelectedFile = OutFiles[0];
+			UE_LOG(LogTemp, Warning, TEXT("Loaded scene file: %s"), *SelectedFile);
+		}
+	}
 }
 
 void URibbonControl::SaveSceneFile()
