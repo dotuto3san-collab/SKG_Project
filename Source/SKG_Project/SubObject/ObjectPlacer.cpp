@@ -16,6 +16,12 @@ void AObjectPlacer::BeginPlay()
         }
     }
 
+    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    {
+        TransformerPawn->SetSnappingValue(ETransformationType::TT_Translation, GridSnapSize);
+        TransformerPawn->SetSnappingEnabled(ETransformationType::TT_Translation, bSnapToGrid);
+    }
+
     if (TestAsset)
     {
         SetSelectedObject(TestAsset);
@@ -115,6 +121,27 @@ void AObjectPlacer::OnLeftClick()
         }
 
         FVector PlacementLocation = Hit.Location + FVector(0.f, 0.f, 50.f);
+
+        if (bSnapToGrid)
+        {
+            PlacementLocation = FVector(
+                FMath::GridSnap(PlacementLocation.X, GridSnapSize),
+                FMath::GridSnap(PlacementLocation.Y, GridSnapSize),
+                PlacementLocation.Z
+            );
+        }
+
+        UE_LOG(LogTemp, Warning, TEXT("Placement Location: X=%f, Y=%f"), PlacementLocation.X, PlacementLocation.Y);
+
+        if (bSnapToGrid)
+        {
+            PlacementLocation = FVector(
+                FMath::GridSnap(PlacementLocation.X, GridSnapSize),
+                FMath::GridSnap(PlacementLocation.Y, GridSnapSize),
+                PlacementLocation.Z
+            );
+        }
+
         AActor* NewObject = GetWorld()->SpawnActor<AActor>(SelectedObjectClass, PlacementLocation, FRotator::ZeroRotator);
 
         if (NewObject)
@@ -178,6 +205,7 @@ void AObjectPlacer::SetSelectedObject(UPlaceableObjectAsset* ObjectAsset)
     if (ObjectAsset)
     {
         SelectedObjectClass = ObjectAsset->ActorClass;
+        SelectedObjectCategory = ObjectAsset->Category;
     }
 
     UpdateHUDText();
@@ -188,6 +216,10 @@ void AObjectPlacer::OnSwitchObjectKeyPressed()
     if (SelectedObjectClass == TestAsset->ActorClass)
     {
         SetSelectedObject(TestAsset2);
+    }
+    else if (SelectedObjectClass == TestAsset2->ActorClass)
+    {
+        SetSelectedObject(TestAsset3);
     }
     else
     {
@@ -202,12 +234,27 @@ void AObjectPlacer::UpdateHUDText()
         return;
     }
 
-    FText DisplayText = FText::FromString(TEXT("未選択"));
+    FText DisplayText = FText::FromString(TEXT("None"));
 
     if (SelectedObjectClass)
     {
-        DisplayText = FText::FromString(SelectedObjectClass->GetName());
+        DisplayText = GetCategoryDisplayText(SelectedObjectCategory);
     }
 
     HUDWidgetInstance->SetCurrentObjectText(DisplayText);
+}
+
+FText AObjectPlacer::GetCategoryDisplayText(EObjectCategory Category) const
+{
+    switch (Category)
+    {
+    case EObjectCategory::Furniture:
+        return FText::FromString(TEXT("Furniture"));
+    case EObjectCategory::Machine:
+        return FText::FromString(TEXT("Machine"));
+    case EObjectCategory::Human:
+        return FText::FromString(TEXT("Human"));
+    default:
+        return FText::FromString(TEXT("None"));
+    }
 }

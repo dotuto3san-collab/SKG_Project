@@ -55,6 +55,9 @@ protected:
     UPROPERTY(EditDefaultsOnly)
     UPlaceableObjectAsset* TestAsset2;
 
+    UPROPERTY(EditDefaultsOnly)
+    UPlaceableObjectAsset* TestAsset3;
+
     UFUNCTION()
     void OnSwitchObjectKeyPressed();
 
@@ -74,4 +77,15 @@ protected:
     bool bShowDebugHUD = true;
 
     void UpdateHUDText();
+
+    FText GetCategoryDisplayText(EObjectCategory Category) const;
+
+    UPROPERTY()
+    EObjectCategory SelectedObjectCategory = EObjectCategory::Furniture;
+
+    UPROPERTY(EditAnywhere, Category = "Snapping")
+    bool bSnapToGrid = true;
+
+    UPROPERTY(EditAnywhere, Category = "Snapping")
+    float GridSnapSize = 50.f;
 };
