@@ -16,6 +16,19 @@ class SKG_PROJECT_API AObjectPlacer : public APlayerController
 {
     GENERATED_BODY()
 
+public:
+    UFUNCTION(BlueprintPure, Category = "Object Placement")
+    AActor* GetSelectedObject() const { return SelectedObject; }
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement")
+    FVector GetSelectedObjectLocation() const;
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement")
+    FRotator GetSelectedObjectRotation() const;
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement")
+    FVector GetSelectedObjectScale() const;
+
 protected:
     virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;

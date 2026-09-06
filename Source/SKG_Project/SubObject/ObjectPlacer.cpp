@@ -1,6 +1,33 @@
 ﻿#include "ObjectPlacer.h"
 #include "TransformerPawn.h"
 
+FVector AObjectPlacer::GetSelectedObjectLocation() const
+{
+    if (SelectedObject)
+    {
+        return SelectedObject->GetActorLocation();
+    }
+    return FVector::ZeroVector;
+}
+
+FRotator AObjectPlacer::GetSelectedObjectRotation() const
+{
+    if (SelectedObject)
+    {
+        return SelectedObject->GetActorRotation();
+    }
+    return FRotator::ZeroRotator;
+}
+
+FVector AObjectPlacer::GetSelectedObjectScale() const
+{
+    if (SelectedObject)
+    {
+        return SelectedObject->GetActorScale3D();
+    }
+    return FVector::OneVector;
+}
+
 void AObjectPlacer::BeginPlay()
 {
     Super::BeginPlay();
@@ -148,8 +175,16 @@ void AObjectPlacer::OnLeftClick()
         {
             PlacedObjects.Add(NewObject);
             SetObjectColor(NewObject, FLinearColor::White);
+
+            SelectedObject = NewObject; // テスト用に選択状態にする
+
+            UE_LOG(LogTemp, Warning, TEXT("Loc: %s, Rot: %s, Scale: %s"),
+                *GetSelectedObjectLocation().ToString(),
+                *GetSelectedObjectRotation().ToString(),
+                *GetSelectedObjectScale().ToString());
         }
     }
+
 }
 
 void AObjectPlacer::OnLeftClickReleased()

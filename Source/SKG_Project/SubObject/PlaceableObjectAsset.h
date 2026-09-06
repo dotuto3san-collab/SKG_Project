@@ -14,6 +14,13 @@ enum class EObjectCategory : uint8
     Human       UMETA(DisplayName = "êl")
 };
 
+UENUM(BlueprintType)
+enum class EHumanStatus : uint8
+{
+    Normal  UMETA(DisplayName = "Nomal"),
+    Danger  UMETA(DisplayName = "Danger")
+};
+
 UCLASS()
 class SKG_PROJECT_API UPlaceableObjectAsset : public UPrimaryDataAsset
 {
