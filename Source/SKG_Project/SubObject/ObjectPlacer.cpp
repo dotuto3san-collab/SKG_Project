@@ -64,6 +64,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("TranslationMode", IE_Pressed, this, &AObjectPlacer::OnTranslationModeKeyPressed);
     InputComponent->BindAction("RotationMode", IE_Pressed, this, &AObjectPlacer::OnRotationModeKeyPressed);
     InputComponent->BindAction("SwitchObject", IE_Pressed, this, &AObjectPlacer::OnSwitchObjectKeyPressed);
+    InputComponent->BindAction("FlipObject", IE_Pressed, this, &AObjectPlacer::OnFlipObjectKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -292,4 +293,16 @@ FText AObjectPlacer::GetCategoryDisplayText(EObjectCategory Category) const
     default:
         return FText::FromString(TEXT("None"));
     }
+}
+
+void AObjectPlacer::OnFlipObjectKeyPressed()
+{
+    if (!SelectedObject)
+    {
+        return;
+    }
+
+    FRotator CurrentRotation = SelectedObject->GetActorRotation();
+    CurrentRotation.Yaw += 180.f;
+    SelectedObject->SetActorRotation(CurrentRotation);
 }

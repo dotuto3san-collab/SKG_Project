@@ -101,4 +101,7 @@ protected:
 
     UPROPERTY(EditAnywhere, Category = "Snapping")
     float GridSnapSize = 50.f;
+
+    UFUNCTION()
+    void OnFlipObjectKeyPressed();
 };
