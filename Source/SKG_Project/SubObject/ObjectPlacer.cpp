@@ -28,6 +28,18 @@ FVector AObjectPlacer::GetSelectedObjectScale() const
     return FVector::OneVector;
 }
 
+void AObjectPlacer::FlipSelectedObject()
+{
+    if (!SelectedObject)
+    {
+        return;
+    }
+
+    FRotator CurrentRotation = SelectedObject->GetActorRotation();
+    CurrentRotation.Yaw += 180.f;
+    SelectedObject->SetActorRotation(CurrentRotation);
+}
+
 void AObjectPlacer::BeginPlay()
 {
     Super::BeginPlay();
@@ -113,10 +125,26 @@ void AObjectPlacer::OnLeftClick()
             SelectedObject = HitActor;
             bIsLeftMouseDown = true;
 
+            bool bShiftHeld = IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift);
+
             if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
             {
-                TransformerPawn->SelectActor(HitActor);
+                TransformerPawn->SelectActor(HitActor, bShiftHeld);
             }
+
+            if (!bShiftHeld)
+            {
+                // Shiftを押していない = 新規選択なので、以前の選択のハイライトを全部消す
+                for (AActor* Obj : SelectedObjects)
+                {
+                    SetObjectHighlight(Obj, false);
+                }
+                SelectedObjects.Empty();
+            }
+
+            SelectedObjects.AddUnique(HitActor);
+            SetObjectHighlight(HitActor, true); // ← ここに移動
+
             return;
         }
 
@@ -137,8 +165,14 @@ void AObjectPlacer::OnLeftClick()
             return;
         }
 
+
         if (SelectedObject)
         {
+            for (AActor* Obj : SelectedObjects)
+            {
+                SetObjectHighlight(Obj, false);
+            }
+            SelectedObjects.Empty();
             SelectedObject = nullptr;
 
             if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
@@ -159,30 +193,12 @@ void AObjectPlacer::OnLeftClick()
             );
         }
 
-        UE_LOG(LogTemp, Warning, TEXT("Placement Location: X=%f, Y=%f"), PlacementLocation.X, PlacementLocation.Y);
-
-        if (bSnapToGrid)
-        {
-            PlacementLocation = FVector(
-                FMath::GridSnap(PlacementLocation.X, GridSnapSize),
-                FMath::GridSnap(PlacementLocation.Y, GridSnapSize),
-                PlacementLocation.Z
-            );
-        }
-
         AActor* NewObject = GetWorld()->SpawnActor<AActor>(SelectedObjectClass, PlacementLocation, FRotator::ZeroRotator);
 
         if (NewObject)
         {
             PlacedObjects.Add(NewObject);
             SetObjectColor(NewObject, FLinearColor::White);
-
-            SelectedObject = NewObject; // テスト用に選択状態にする
-
-            UE_LOG(LogTemp, Warning, TEXT("Loc: %s, Rot: %s, Scale: %s"),
-                *GetSelectedObjectLocation().ToString(),
-                *GetSelectedObjectRotation().ToString(),
-                *GetSelectedObjectScale().ToString());
         }
     }
 
@@ -233,6 +249,16 @@ void AObjectPlacer::SetObjectColor(AActor* TargetActor, FLinearColor Color)
         {
             DynMat->SetVectorParameterValue(FName("Color"), Color);
         }
+    }
+}
+
+void AObjectPlacer::SetObjectHighlight(AActor* TargetActor, bool bHighlighted)
+{
+    if (!TargetActor) return;
+
+    if (UStaticMeshComponent* Mesh = TargetActor->FindComponentByClass<UStaticMeshComponent>())
+    {
+        Mesh->SetOverlayMaterial(bHighlighted ? HighlightMaterial : nullptr);
     }
 }
 

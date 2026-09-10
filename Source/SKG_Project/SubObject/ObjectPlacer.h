@@ -29,6 +29,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "Object Placement")
     FVector GetSelectedObjectScale() const;
 
+    UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void FlipSelectedObject();
+
 protected:
     virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;
@@ -43,6 +46,8 @@ protected:
     bool bIsLeftMouseDown = false;
 
     void SetObjectColor(AActor* TargetActor, FLinearColor Color);
+
+    void SetObjectHighlight(AActor* TargetActor, bool bHighlighted);
 
     //UPROPERTY(EditDefaultsOnly)
     //TSubclassOf<AActor> ObjectToSpawn;
@@ -104,4 +109,12 @@ protected:
 
     UFUNCTION()
     void OnFlipObjectKeyPressed();
+
+    UPROPERTY()
+    TArray<AActor*> SelectedObjects;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Highlight")
+    UMaterialInterface* HighlightMaterial;
+
+
 };
