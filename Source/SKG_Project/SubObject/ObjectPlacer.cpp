@@ -28,6 +28,32 @@ FVector AObjectPlacer::GetSelectedObjectScale() const
     return FVector::OneVector;
 }
 
+void AObjectPlacer::ArrangeSelectedObjectsHorizontally()
+{
+    if (SelectedObjects.Num() < 2)
+    {
+        return;
+    }
+
+    // X座標が小さい順に並び替え
+    TArray<AActor*> SortedObjects = SelectedObjects;
+    SortedObjects.Sort([](const AActor& A, const AActor& B)
+        {
+            return A.GetActorLocation().X < B.GetActorLocation().X;
+        });
+
+    // 一番左のオブジェクトを基準にする
+    FVector BaseLocation = SortedObjects[0]->GetActorLocation();
+
+    for (int32 i = 0; i < SortedObjects.Num(); i++)
+    {
+        FVector NewLocation = BaseLocation;
+        NewLocation.X += GridSnapSize * i;
+
+        SortedObjects[i]->SetActorLocation(NewLocation);
+    }
+}
+
 void AObjectPlacer::FlipSelectedObject()
 {
     if (!SelectedObject)
@@ -77,6 +103,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("RotationMode", IE_Pressed, this, &AObjectPlacer::OnRotationModeKeyPressed);
     InputComponent->BindAction("SwitchObject", IE_Pressed, this, &AObjectPlacer::OnSwitchObjectKeyPressed);
     InputComponent->BindAction("FlipObject", IE_Pressed, this, &AObjectPlacer::OnFlipObjectKeyPressed);
+    InputComponent->BindAction("ArrangeObjects", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -331,4 +358,9 @@ void AObjectPlacer::OnFlipObjectKeyPressed()
     FRotator CurrentRotation = SelectedObject->GetActorRotation();
     CurrentRotation.Yaw += 180.f;
     SelectedObject->SetActorRotation(CurrentRotation);
+}
+
+void AObjectPlacer::OnArrangeObjectsKeyPressed()
+{
+    ArrangeSelectedObjectsHorizontally();
 }

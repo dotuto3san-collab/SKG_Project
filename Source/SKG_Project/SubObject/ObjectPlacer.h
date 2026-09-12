@@ -30,6 +30,8 @@ public:
     FVector GetSelectedObjectScale() const;
 
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void ArrangeSelectedObjectsHorizontally();
+
     void FlipSelectedObject();
 
 protected:
@@ -116,5 +118,6 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Highlight")
     UMaterialInterface* HighlightMaterial;
 
-
+    UFUNCTION()
+    void OnArrangeObjectsKeyPressed();
 };
