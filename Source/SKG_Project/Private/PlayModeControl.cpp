@@ -85,6 +85,64 @@ void UPlayModeControl::Tick(float DeltaTime)
 
 		UE_LOG(LogTemp, Log, TEXT("Captured 1 frame: %d pixels, DeltaTime %.4f"), Bitmap.Num(), DeltaTime);
 
+#if PLATFORM_WINDOWS
+		if (SinkWriter && Bitmap.Num() == RecordingWidth * RecordingHeight)
+		{
+			const DWORD BufferSize = RecordingWidth * RecordingHeight * 4; // RGB32v = 4byte/pixel
+
+			IMFMediaBuffer* MediaBuffer = nullptr;
+			HRESULT hr = MFCreateMemoryBuffer(BufferSize, &MediaBuffer);
+
+			if (SUCCEEDED(hr))
+			{
+				BYTE* RawBuffer = nullptr;
+				hr = MediaBuffer->Lock(&RawBuffer, nullptr, nullptr);
+				if (SUCCEEDED(hr))
+				{
+					const int32 RowBytes = RecordingWidth * 4;
+					const uint8* SrcData = reinterpret_cast<const uint8*>(Bitmap.GetData());
+
+					for (int32 Row = 0; Row < RecordingHeight; ++Row)
+					{
+						const uint8* SrcRow = SrcData + (RecordingHeight - 1 - Row) * RowBytes;
+						BYTE* DstRow = RawBuffer + Row * RowBytes;
+						FMemory::Memcpy(DstRow, SrcRow, RowBytes);
+					}
+
+					MediaBuffer->Unlock();
+					MediaBuffer->SetCurrentLength(BufferSize);
+
+					IMFSample* Sample = nullptr;
+					hr = MFCreateSample(&Sample);
+
+					if (SUCCEEDED(hr))
+					{
+						Sample->AddBuffer(MediaBuffer);
+
+						const LONGLONG Timestamp = RecordingFrameCount * RecordingFrameDuration100ns;
+						Sample->SetSampleTime(Timestamp);
+						Sample->SetSampleDuration(RecordingFrameDuration100ns);
+
+						hr = SinkWriter->WriteSample(VideoStreamIndex, Sample);
+
+						if (FAILED(hr))
+						{
+							UE_LOG(LogTemp, Error, TEXT("WriteSample failed: 0x%08x"), hr);
+						}
+						else
+						{
+							RecordingFrameCount++;
+						}
+
+						Sample->Release();
+					}
+				}
+
+				MediaBuffer->Release();
+			}
+		}
+
+#endif
 		SegmentElapsedTime += DeltaTime;
 		if (SegmentElapsedTime >= RecordingSegmentSeconds)
 		{
