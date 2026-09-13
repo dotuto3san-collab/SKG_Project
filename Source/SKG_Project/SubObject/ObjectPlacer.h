@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "PlaceableObjectAsset.h"
 #include "ObjectHUDWidget.h"
+#include "PlaceableHumanActor.h"
 #include "ObjectPlacer.generated.h"
 
 /**
@@ -31,6 +32,15 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
     void ArrangeSelectedObjectsHorizontally();
+
+    UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void SetSelectedObjectLocation(FVector NewLocation);
+
+    UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void SetSelectedObjectRotation(FRotator NewRotation);
+
+    UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void SetSelectedObjectScale(FVector NewScale);
 
     void FlipSelectedObject();
 
@@ -120,4 +130,7 @@ protected:
 
     UFUNCTION()
     void OnArrangeObjectsKeyPressed();
+
+    UFUNCTION()
+    void OnToggleHumanStatusKeyPressed();
 };

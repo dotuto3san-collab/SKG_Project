@@ -20,4 +20,7 @@ public:
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Human Status")
     EHumanStatus HumanStatus = EHumanStatus::Normal;
+
+    UPROPERTY()
+    FRotator OriginalRotation;
 };

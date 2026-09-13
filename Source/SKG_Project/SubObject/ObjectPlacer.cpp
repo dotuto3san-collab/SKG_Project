@@ -54,6 +54,30 @@ void AObjectPlacer::ArrangeSelectedObjectsHorizontally()
     }
 }
 
+void AObjectPlacer::SetSelectedObjectLocation(FVector NewLocation)
+{
+    if (SelectedObject)
+    {
+        SelectedObject->SetActorLocation(NewLocation);
+    }
+}
+
+void AObjectPlacer::SetSelectedObjectRotation(FRotator NewRotation)
+{
+    if (SelectedObject)
+    {
+        SelectedObject->SetActorRotation(NewRotation);
+    }
+}
+
+void AObjectPlacer::SetSelectedObjectScale(FVector NewScale)
+{
+    if (SelectedObject)
+    {
+        SelectedObject->SetActorScale3D(NewScale);
+    }
+}
+
 void AObjectPlacer::FlipSelectedObject()
 {
     if (!SelectedObject)
@@ -104,6 +128,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("SwitchObject", IE_Pressed, this, &AObjectPlacer::OnSwitchObjectKeyPressed);
     InputComponent->BindAction("FlipObject", IE_Pressed, this, &AObjectPlacer::OnFlipObjectKeyPressed);
     InputComponent->BindAction("ArrangeObjects", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsKeyPressed);
+    InputComponent->BindAction("ToggleHumanStatus", IE_Pressed, this, &AObjectPlacer::OnToggleHumanStatusKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -363,4 +388,21 @@ void AObjectPlacer::OnFlipObjectKeyPressed()
 void AObjectPlacer::OnArrangeObjectsKeyPressed()
 {
     ArrangeSelectedObjectsHorizontally();
+}
+
+void AObjectPlacer::OnToggleHumanStatusKeyPressed()
+{
+    if (!SelectedObject)
+    {
+        return;
+    }
+
+    if (APlaceableHumanActor* HumanActor = Cast<APlaceableHumanActor>(SelectedObject))
+    {
+        EHumanStatus NewStatus = (HumanActor->GetHumanStatus() == EHumanStatus::Normal)
+            ? EHumanStatus::Danger
+            : EHumanStatus::Normal;
+
+        HumanActor->SetHumanStatus(NewStatus);
+    }
 }
