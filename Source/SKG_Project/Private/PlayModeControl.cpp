@@ -145,18 +145,34 @@ void UPlayModeControl::StartNewVideoSegment()
 			return;
 		}
 	}
+	if (!GEngine || !GEngine->GameViewport || !GEngine->GameViewport->Viewport)
+	{
+		UE_LOG(LogTemp, Error, TEXT("No viewport available, cannot start recording."));
+		return;
+	}
+
+	const FIntPoint Size = GEngine->GameViewport->Viewport->GetSizeXY();
+	RecordingWidth = Size.X;
+	RecordingHeight = Size.Y;
+
+	RecordingWidth -= (RecordingWidth % 2);
+	RecordingHeight -= (RecordingHeight % 2);
+
+	const int32 TargetFps = 30;
+	RecordingFrameDuration100ns = 10 * 1000 * 1000 / TargetFps;
+	RecordingFrameCount = 0;
 
 	const FString FilePath = GetSegmentFilePath(SegmentIndex);
 	IFileManager::Get().MakeDirectory(*FPaths::GetPath(FilePath), true);
 
-	IMFAttributes* Attributes = nullptr;
-	MFCreateAttributes(&Attributes, 1);
+	IMFAttributes* WriterAttributes = nullptr;
+	MFCreateAttributes(&WriterAttributes, 1);
 
-	Attributes->SetUINT32(MF_SINK_WRITER_DISABLE_THROTTLING, TRUE);
+	WriterAttributes->SetUINT32(MF_SINK_WRITER_DISABLE_THROTTLING, TRUE);
 
-	HRESULT hr = MFCreateSinkWriterFromURL(*FilePath, nullptr, Attributes, &SinkWriter);
+	HRESULT hr = MFCreateSinkWriterFromURL(*FilePath, nullptr, WriterAttributes, &SinkWriter);
 
-	if (Attributes) { Attributes->Release(); Attributes = nullptr; }
+	if (WriterAttributes) { WriterAttributes->Release(); WriterAttributes = nullptr; }
 
 	if (FAILED(hr) || !SinkWriter)
 	{
@@ -164,6 +180,58 @@ void UPlayModeControl::StartNewVideoSegment()
 		SinkWriter = nullptr;
 		return;
 	}
+
+
+	// OutputFormat
+	IMFMediaType* OutputType = nullptr;
+	MFCreateMediaType(&OutputType);
+	OutputType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+	OutputType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
+	OutputType->SetUINT32(MF_MT_AVG_BITRATE, 8000000); // 8Mbps
+	OutputType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
+	MFSetAttributeSize(OutputType, MF_MT_FRAME_SIZE, RecordingWidth, RecordingHeight);
+	MFSetAttributeRatio(OutputType, MF_MT_FRAME_RATE, TargetFps, 1);
+	MFSetAttributeRatio(OutputType, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
+
+	hr = SinkWriter->AddStream(OutputType, &VideoStreamIndex);
+	OutputType->Release();
+
+	if (FAILED(hr))
+	{
+		UE_LOG(LogTemp, Error, TEXT("AddStream failed: 0x%08x"), hr);
+		FinalizeCurrentVideoSegment();
+		return;
+	}
+
+
+	// InputFormat
+	IMFMediaType* InputType = nullptr;
+	MFCreateMediaType(&InputType);
+	InputType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+	InputType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
+	InputType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
+	MFSetAttributeSize(InputType, MF_MT_FRAME_SIZE, RecordingWidth, RecordingHeight);
+	MFSetAttributeRatio(InputType, MF_MT_FRAME_RATE, TargetFps, 1);
+	MFSetAttributeRatio(InputType, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
+
+	hr = SinkWriter->SetInputMediaType(VideoStreamIndex, InputType, nullptr);
+	InputType->Release();
+
+	if (FAILED(hr))
+	{
+		UE_LOG(LogTemp, Error, TEXT("SetInputMediaType failed: 0x%08x"), hr);
+		FinalizeCurrentVideoSegment();
+		return;
+	}
+
+	hr = SinkWriter->BeginWriting();
+	if (FAILED(hr))
+	{
+		UE_LOG(LogTemp, Error, TEXT("BeginWriting failed: 0x%08x"), hr);
+		FinalizeCurrentVideoSegment();
+		return;
+	}
+
 
 	UE_LOG(LogTemp, Warning, TEXT("Video segment file created: %s"), *FilePath);
 

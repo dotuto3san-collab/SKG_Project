@@ -7,6 +7,12 @@
 #include "Components/Widget.h"
 #include "PlayModeControl.generated.h"
 
+#if PLATFORM_WINDOWS
+#include "Windows/AllowWindowsPlatformTypes.h"
+#include <mfobjects.h>
+#include "Windows/HideWindowsPlatformTypes.h"
+#endif
+
 struct IMFSinkWriter;
 
 /**
@@ -66,8 +72,13 @@ private:
 
 	bool bMFInitialized = false;
 
+	int32 RecordingWidth = 0;
+	int32 RecordingHeight = 0;
+	int64 RecordingFrameDuration100ns = 0;
+	int64 RecordingFrameCount = 0;
+
 #if PLATFORM_WINDOWS
 	IMFSinkWriter* SinkWriter = nullptr;
-	uint32 VideoStreamIndex = 0;
+	DWORD VideoStreamIndex = 0;
 #endif
 };
