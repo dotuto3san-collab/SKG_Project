@@ -78,6 +78,49 @@ void AObjectPlacer::SetSelectedObjectScale(FVector NewScale)
     }
 }
 
+void AObjectPlacer::ReplaceSelectedObjects()
+{
+    if (SelectedObjects.Num() == 0 || !SelectedObjectClass)
+    {
+        return;
+    }
+
+    TArray<AActor*> NewSelection;
+
+    for (AActor* OldActor : SelectedObjects)
+    {
+        if (!OldActor) continue;
+
+        FVector Location = OldActor->GetActorLocation();
+        FRotator Rotation = OldActor->GetActorRotation();
+        FVector Scale = OldActor->GetActorScale3D();
+
+        PlacedObjects.Remove(OldActor);
+        OldActor->Destroy();
+
+        AActor* NewActor = GetWorld()->SpawnActor<AActor>(SelectedObjectClass, Location, Rotation);
+        if (NewActor)
+        {
+            NewActor->SetActorScale3D(Scale);
+            PlacedObjects.Add(NewActor);
+            SetObjectColor(NewActor, FLinearColor::White);
+            NewSelection.Add(NewActor);
+        }
+    }
+
+    SelectedObjects = NewSelection;
+    SelectedObject = SelectedObjects.Num() > 0 ? SelectedObjects.Last() : nullptr;
+
+    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    {
+        TransformerPawn->DeselectAll();
+        if (SelectedObjects.Num() > 0)
+        {
+            TransformerPawn->SelectMultipleActors(SelectedObjects, false);
+        }
+    }
+}
+
 void AObjectPlacer::FlipSelectedObject()
 {
     if (!SelectedObject)
@@ -129,6 +172,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("FlipObject", IE_Pressed, this, &AObjectPlacer::OnFlipObjectKeyPressed);
     InputComponent->BindAction("ArrangeObjects", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsKeyPressed);
     InputComponent->BindAction("ToggleHumanStatus", IE_Pressed, this, &AObjectPlacer::OnToggleHumanStatusKeyPressed);
+    InputComponent->BindAction("ReplaceObject", IE_Pressed, this, &AObjectPlacer::OnReplaceObjectKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -405,4 +449,9 @@ void AObjectPlacer::OnToggleHumanStatusKeyPressed()
 
         HumanActor->SetHumanStatus(NewStatus);
     }
+}
+
+void AObjectPlacer::OnReplaceObjectKeyPressed()
+{
+    ReplaceSelectedObjects();
 }
