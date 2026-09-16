@@ -42,8 +42,8 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
     void SetSelectedObjectScale(FVector NewScale);
 
-    UFUNCTION(BlueprintCallable, Category = "Object Placement")
-    void ReplaceSelectedObjects();
+   //UFUNCTION(BlueprintCallable, Category = "Object Placement")
+   // void ReplaceSelectedObjects();
 
     void FlipSelectedObject();
 
@@ -137,6 +137,6 @@ protected:
     UFUNCTION()
     void OnToggleHumanStatusKeyPressed();
 
-    UFUNCTION()
-    void OnReplaceObjectKeyPressed();
+  //  UFUNCTION()
+  //  void OnReplaceObjectKeyPressed();
 };

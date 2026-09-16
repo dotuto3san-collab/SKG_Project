@@ -77,7 +77,7 @@ void AObjectPlacer::SetSelectedObjectScale(FVector NewScale)
         SelectedObject->SetActorScale3D(NewScale);
     }
 }
-
+/*
 void AObjectPlacer::ReplaceSelectedObjects()
 {
     if (SelectedObjects.Num() == 0 || !SelectedObjectClass)
@@ -120,6 +120,8 @@ void AObjectPlacer::ReplaceSelectedObjects()
         }
     }
 }
+*/
+
 
 void AObjectPlacer::FlipSelectedObject()
 {
@@ -172,7 +174,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("FlipObject", IE_Pressed, this, &AObjectPlacer::OnFlipObjectKeyPressed);
     InputComponent->BindAction("ArrangeObjects", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsKeyPressed);
     InputComponent->BindAction("ToggleHumanStatus", IE_Pressed, this, &AObjectPlacer::OnToggleHumanStatusKeyPressed);
-    InputComponent->BindAction("ReplaceObject", IE_Pressed, this, &AObjectPlacer::OnReplaceObjectKeyPressed);
+    //InputComponent->BindAction("ReplaceObject", IE_Pressed, this, &AObjectPlacer::OnReplaceObjectKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -451,7 +453,10 @@ void AObjectPlacer::OnToggleHumanStatusKeyPressed()
     }
 }
 
+/*
 void AObjectPlacer::OnReplaceObjectKeyPressed()
 {
     ReplaceSelectedObjects();
 }
+*/
+
