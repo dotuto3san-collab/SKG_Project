@@ -56,7 +56,7 @@ void AObjectPlacer::ArrangeSelectedObjectsHorizontally()
 
 void AObjectPlacer::SetSelectedObjectLocation(FVector NewLocation)
 {
-    if (SelectedObject)
+    if (SelectedObject && !LockedObjects.Contains(SelectedObject))
     {
         SelectedObject->SetActorLocation(NewLocation);
     }
@@ -64,7 +64,7 @@ void AObjectPlacer::SetSelectedObjectLocation(FVector NewLocation)
 
 void AObjectPlacer::SetSelectedObjectRotation(FRotator NewRotation)
 {
-    if (SelectedObject)
+    if (SelectedObject && !LockedObjects.Contains(SelectedObject))
     {
         SelectedObject->SetActorRotation(NewRotation);
     }
@@ -72,60 +72,61 @@ void AObjectPlacer::SetSelectedObjectRotation(FRotator NewRotation)
 
 void AObjectPlacer::SetSelectedObjectScale(FVector NewScale)
 {
-    if (SelectedObject)
+    if (SelectedObject && !LockedObjects.Contains(SelectedObject))
     {
         SelectedObject->SetActorScale3D(NewScale);
     }
 }
-/*
-void AObjectPlacer::ReplaceSelectedObjects()
+
+void AObjectPlacer::ToggleLockSelectedObjects()
 {
-    if (SelectedObjects.Num() == 0 || !SelectedObjectClass)
+    if (SelectedObjects.Num() == 0)
     {
         return;
     }
 
-    TArray<AActor*> NewSelection;
-
-    for (AActor* OldActor : SelectedObjects)
+    bool bAnyUnlocked = false;
+    for (AActor* Obj : SelectedObjects)
     {
-        if (!OldActor) continue;
-
-        FVector Location = OldActor->GetActorLocation();
-        FRotator Rotation = OldActor->GetActorRotation();
-        FVector Scale = OldActor->GetActorScale3D();
-
-        PlacedObjects.Remove(OldActor);
-        OldActor->Destroy();
-
-        AActor* NewActor = GetWorld()->SpawnActor<AActor>(SelectedObjectClass, Location, Rotation);
-        if (NewActor)
+        if (!LockedObjects.Contains(Obj))
         {
-            NewActor->SetActorScale3D(Scale);
-            PlacedObjects.Add(NewActor);
-            SetObjectColor(NewActor, FLinearColor::White);
-            NewSelection.Add(NewActor);
+            bAnyUnlocked = true;
+            break;
         }
     }
 
-    SelectedObjects = NewSelection;
-    SelectedObject = SelectedObjects.Num() > 0 ? SelectedObjects.Last() : nullptr;
+    ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn());
 
-    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    for (AActor* Obj : SelectedObjects)
     {
-        TransformerPawn->DeselectAll();
-        if (SelectedObjects.Num() > 0)
+        if (bAnyUnlocked)
         {
-            TransformerPawn->SelectMultipleActors(SelectedObjects, false);
+            LockedObjects.Add(Obj);
+            if (TransformerPawn)
+            {
+                TransformerPawn->DeselectActor(Obj); // ロックしたらギズモの操作対象から外す
+            }
+        }
+        else
+        {
+            LockedObjects.Remove(Obj);
+            if (TransformerPawn)
+            {
+                TransformerPawn->SelectActor(Obj, true); // ロック解除したら再度ギズモの対象にする
+            }
         }
     }
 }
-*/
+
+bool AObjectPlacer::IsSelectedObjectLocked() const
+{
+    return SelectedObject && LockedObjects.Contains(SelectedObject);
+}
 
 
 void AObjectPlacer::FlipSelectedObject()
 {
-    if (!SelectedObject)
+    if (!SelectedObject || LockedObjects.Contains(SelectedObject))
     {
         return;
     }
@@ -140,6 +141,12 @@ void AObjectPlacer::BeginPlay()
     Super::BeginPlay();
     bShowMouseCursor = true;
     SetInputMode(FInputModeGameAndUI());
+
+    // カメラの向きをControlRotationに同期させる
+    if (APawn* MyPawn = GetPawn())
+    {
+        SetControlRotation(MyPawn->GetActorRotation());
+    }
 
     if (bShowDebugHUD && HUDWidgetClass)
     {
@@ -175,6 +182,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("ArrangeObjects", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsKeyPressed);
     InputComponent->BindAction("ToggleHumanStatus", IE_Pressed, this, &AObjectPlacer::OnToggleHumanStatusKeyPressed);
     //InputComponent->BindAction("ReplaceObject", IE_Pressed, this, &AObjectPlacer::OnReplaceObjectKeyPressed);
+    InputComponent->BindAction("ToggleLock", IE_Pressed, this, &AObjectPlacer::OnToggleLockKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -183,14 +191,22 @@ void AObjectPlacer::Tick(float DeltaTime)
 
     if (bIsLeftMouseDown)
     {
-        if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
-        {
-            FVector WorldLocation, WorldDirection;
-            if (DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
-            {
-                FVector LookingVector = PlayerCameraManager ? PlayerCameraManager->GetCameraRotation().Vector() : WorldDirection;
+        bool bIsLocked = SelectedObject && LockedObjects.Contains(SelectedObject);
+        UE_LOG(LogTemp, Warning, TEXT("Tick check - SelectedObject valid: %s, IsLocked: %s"),
+            SelectedObject ? TEXT("true") : TEXT("false"),
+            bIsLocked ? TEXT("true") : TEXT("false"));
 
-                TransformerPawn->UpdateTransform(LookingVector, WorldLocation, WorldDirection);
+        if (SelectedObject && !LockedObjects.Contains(SelectedObject))
+        {
+            if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+            {
+                FVector WorldLocation, WorldDirection;
+                if (DeprojectMousePositionToWorld(WorldLocation, WorldDirection))
+                {
+                    FVector LookingVector = PlayerCameraManager ? PlayerCameraManager->GetCameraRotation().Vector() : WorldDirection;
+
+                    TransformerPawn->UpdateTransform(LookingVector, WorldLocation, WorldDirection);
+                }
             }
         }
     }
@@ -220,6 +236,10 @@ void AObjectPlacer::OnLeftClick()
         // ↓ ここを元に戻す
         if (HitActor && PlacedObjects.Contains(HitActor))
         {
+            UE_LOG(LogTemp, Warning, TEXT("Object selected: %s"), *HitActor->GetName());
+            SelectedObject = HitActor;
+            bIsLeftMouseDown = true;
+
             SelectedObject = HitActor;
             bIsLeftMouseDown = true;
 
@@ -227,7 +247,10 @@ void AObjectPlacer::OnLeftClick()
 
             if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
             {
-                TransformerPawn->SelectActor(HitActor, bShiftHeld);
+                if (!LockedObjects.Contains(HitActor))
+                {
+                    TransformerPawn->SelectActor(HitActor, bShiftHeld);
+                }
             }
 
             if (!bShiftHeld)
@@ -248,6 +271,8 @@ void AObjectPlacer::OnLeftClick()
 
         if (HitActor && HitActor->GetClass()->GetName().Contains(TEXT("Gizmo")))
         {
+            UE_LOG(LogTemp, Warning, TEXT("Gizmo hit: %s"), *HitActor->GetName());
+    bIsLeftMouseDown = true;
             bIsLeftMouseDown = true;
 
             if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
@@ -453,10 +478,9 @@ void AObjectPlacer::OnToggleHumanStatusKeyPressed()
     }
 }
 
-/*
-void AObjectPlacer::OnReplaceObjectKeyPressed()
+void AObjectPlacer::OnToggleLockKeyPressed()
 {
-    ReplaceSelectedObjects();
+    ToggleLockSelectedObjects();
 }
-*/
+
 

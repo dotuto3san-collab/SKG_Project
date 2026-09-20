@@ -42,8 +42,11 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
     void SetSelectedObjectScale(FVector NewScale);
 
-   //UFUNCTION(BlueprintCallable, Category = "Object Placement")
-   // void ReplaceSelectedObjects();
+    UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void ToggleLockSelectedObjects();
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement")
+    bool IsSelectedObjectLocked() const;
 
     void FlipSelectedObject();
 
@@ -64,8 +67,8 @@ protected:
 
     void SetObjectHighlight(AActor* TargetActor, bool bHighlighted);
 
-    //UPROPERTY(EditDefaultsOnly)
-    //TSubclassOf<AActor> ObjectToSpawn;
+    UPROPERTY(EditDefaultsOnly)
+    TSubclassOf<AActor> ObjectToSpawn;
 
     UPROPERTY()
     TSubclassOf<AActor> SelectedObjectClass;
@@ -137,6 +140,9 @@ protected:
     UFUNCTION()
     void OnToggleHumanStatusKeyPressed();
 
-  //  UFUNCTION()
-  //  void OnReplaceObjectKeyPressed();
+    UPROPERTY()
+    TSet<AActor*> LockedObjects;
+
+    UFUNCTION()
+    void OnToggleLockKeyPressed();
 };
