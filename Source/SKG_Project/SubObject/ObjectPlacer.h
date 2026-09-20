@@ -7,6 +7,7 @@
 #include "PlaceableObjectAsset.h"
 #include "ObjectHUDWidget.h"
 #include "PlaceableHumanActor.h"
+#include "TransformerPawn.h"
 #include "ObjectPlacer.generated.h"
 
 /**
@@ -43,10 +44,22 @@ public:
     void SetSelectedObjectScale(FVector NewScale);
 
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
-    void ToggleLockSelectedObjects();
+    void ToggleLockSelectedObjectsLocation();
+
+    UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void ToggleLockSelectedObjectsRotation();
+
+    UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void ToggleLockSelectedObjectsScale();
 
     UFUNCTION(BlueprintPure, Category = "Object Placement")
-    bool IsSelectedObjectLocked() const;
+    bool IsSelectedObjectLocationLocked() const;
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement")
+    bool IsSelectedObjectRotationLocked() const;
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement")
+    bool IsSelectedObjectScaleLocked() const;
 
     void FlipSelectedObject();
 
@@ -141,8 +154,25 @@ protected:
     void OnToggleHumanStatusKeyPressed();
 
     UPROPERTY()
-    TSet<AActor*> LockedObjects;
+    TSet<AActor*> LockedLocationObjects;
+
+    UPROPERTY()
+    TSet<AActor*> LockedRotationObjects;
+
+    UPROPERTY()
+    TSet<AActor*> LockedScaleObjects;
+
+    void RefreshGizmoSelectionForLock();
 
     UFUNCTION()
-    void OnToggleLockKeyPressed();
+    void OnToggleLockLocationKeyPressed();
+
+    UFUNCTION()
+    void OnToggleLockRotationKeyPressed();
+
+    UFUNCTION()
+    void OnToggleLockScaleKeyPressed();
+
+    UPROPERTY()
+    ETransformationType CurrentTransformMode = ETransformationType::TT_Translation;
 };
