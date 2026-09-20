@@ -150,6 +150,58 @@ bool AObjectPlacer::IsSelectedObjectScaleLocked() const
     return SelectedObject && LockedScaleObjects.Contains(SelectedObject);
 }
 
+void AObjectPlacer::ReplaceSelectedObjects()
+{
+    if (SelectedObjects.Num() == 0 || !SelectedObjectClass)
+    {
+        return;
+    }
+
+    // 先に選択解除してから、破棄・生成する
+    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    {
+        TransformerPawn->DeselectAll();
+    }
+
+    TArray<AActor*> NewSelection;
+
+    for (AActor* OldActor : SelectedObjects)
+    {
+        if (!OldActor) continue;
+
+        FVector Location = OldActor->GetActorLocation();
+        FRotator Rotation = OldActor->GetActorRotation();
+        FVector Scale = OldActor->GetActorScale3D();
+
+        PlacedObjects.Remove(OldActor);
+        LockedLocationObjects.Remove(OldActor);
+        LockedRotationObjects.Remove(OldActor);
+        LockedScaleObjects.Remove(OldActor);
+        OldActor->Destroy();
+
+        AActor* NewActor = GetWorld()->SpawnActor<AActor>(SelectedObjectClass, Location, Rotation);
+        if (NewActor)
+        {
+            NewActor->SetActorScale3D(Scale);
+            PlacedObjects.Add(NewActor);
+            SetObjectColor(NewActor, FLinearColor::White);
+            NewSelection.Add(NewActor);
+        }
+    }
+
+    SelectedObjects = NewSelection;
+    SelectedObject = SelectedObjects.Num() > 0 ? SelectedObjects.Last() : nullptr;
+
+    // 新しく生成したオブジェクトのハイライトを付ける
+    for (AActor* Obj : SelectedObjects)
+    {
+        SetObjectHighlight(Obj, true);
+    }
+
+    // 選択とロック状態の反映をまとめて行う
+    RefreshGizmoSelectionForLock();
+}
+
 
 void AObjectPlacer::FlipSelectedObject()
 {
@@ -208,7 +260,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("FlipObject", IE_Pressed, this, &AObjectPlacer::OnFlipObjectKeyPressed);
     InputComponent->BindAction("ArrangeObjects", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsKeyPressed);
     InputComponent->BindAction("ToggleHumanStatus", IE_Pressed, this, &AObjectPlacer::OnToggleHumanStatusKeyPressed);
-    //InputComponent->BindAction("ReplaceObject", IE_Pressed, this, &AObjectPlacer::OnReplaceObjectKeyPressed);
+    InputComponent->BindAction("ReplaceObject", IE_Pressed, this, &AObjectPlacer::OnReplaceObjectKeyPressed);
     InputComponent->BindAction("ToggleLockLocation", IE_Pressed, this, &AObjectPlacer::OnToggleLockLocationKeyPressed);
     InputComponent->BindAction("ToggleLockRotation", IE_Pressed, this, &AObjectPlacer::OnToggleLockRotationKeyPressed);
     InputComponent->BindAction("ToggleLockScale", IE_Pressed, this, &AObjectPlacer::OnToggleLockScaleKeyPressed);
@@ -552,6 +604,11 @@ void AObjectPlacer::OnToggleLockRotationKeyPressed()
 void AObjectPlacer::OnToggleLockScaleKeyPressed()
 {
     ToggleLockSelectedObjectsScale();
+}
+
+void AObjectPlacer::OnReplaceObjectKeyPressed()
+{
+    ReplaceSelectedObjects();
 }
 
 

@@ -61,6 +61,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "Object Placement")
     bool IsSelectedObjectScaleLocked() const;
 
+    UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void ReplaceSelectedObjects();
+
     void FlipSelectedObject();
 
 protected:
@@ -175,4 +178,7 @@ protected:
 
     UPROPERTY()
     ETransformationType CurrentTransformMode = ETransformationType::TT_Translation;
+
+    UFUNCTION()
+    void OnReplaceObjectKeyPressed();
 };
