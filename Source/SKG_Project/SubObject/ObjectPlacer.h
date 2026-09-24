@@ -10,6 +10,15 @@
 #include "TransformerPawn.h"
 #include "ObjectPlacer.generated.h"
 
+UENUM(BlueprintType)
+enum class EAlignSnapMode : uint8
+{
+    Off     UMETA(DisplayName = "Off"),
+    Auto    UMETA(DisplayName = "Auto"),   // ズレが小さいほうの軸を自動で選ぶ
+    AxisX   UMETA(DisplayName = "X"),      // X座標を基準オブジェクトに揃える
+    AxisY   UMETA(DisplayName = "Y")       // Y座標を基準オブジェクトに揃える
+};
+
 /**
  * 
  */
@@ -65,6 +74,15 @@ public:
     void ReplaceSelectedObjects();
 
     void FlipSelectedObject();
+
+    UFUNCTION(BlueprintCallable, Category = "Object Placement|Snap")
+    void CycleAlignSnapMode();
+
+    UFUNCTION(BlueprintCallable, Category = "Object Placement|Snap")
+    void SetAlignSnapMode(EAlignSnapMode NewMode);
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement|Snap")
+    EAlignSnapMode GetAlignSnapMode() const { return AlignSnapMode; }
 
 protected:
     virtual void BeginPlay() override;
@@ -181,4 +199,21 @@ protected:
 
     UFUNCTION()
     void OnReplaceObjectKeyPressed();
+
+    // 揃えるスナップのモード。Off(初期値)のときは従来どおりグリッドスナップが働く
+    UPROPERTY(EditAnywhere, Category = "Snapping|Align")
+    EAlignSnapMode AlignSnapMode = EAlignSnapMode::Off;
+
+    // この距離(cm)以内のズレなら自動で揃える
+    UPROPERTY(EditAnywhere, Category = "Snapping|Align", meta = (ClampMin = "0.0"))
+    float AlignSnapThreshold = 30.f;
+
+    // targetを一番近いオブジェクトに揃える。実際に動かしたらtrueを返す
+    bool ApplyAlignSnap(AActor* TargetActor);
+
+    // XY平面上で一番近い配置済みオブジェクトを探す(自分自身は除く)
+    AActor* FindNearestPlacedObject(AActor* TargetActor) const;
+
+    UFUNCTION()
+    void OnCycleAlignSnapKeyPressed();
 };

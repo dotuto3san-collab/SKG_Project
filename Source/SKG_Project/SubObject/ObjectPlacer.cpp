@@ -1,5 +1,6 @@
 ﻿#include "ObjectPlacer.h"
 #include "TransformerPawn.h"
+#include "Engine/Engine.h"
 
 FVector AObjectPlacer::GetSelectedObjectLocation() const
 {
@@ -215,6 +216,37 @@ void AObjectPlacer::FlipSelectedObject()
     SelectedObject->SetActorRotation(CurrentRotation);
 }
 
+void AObjectPlacer::CycleAlignSnapMode()
+{
+    switch (AlignSnapMode)
+    {
+    case EAlignSnapMode::Off:   SetAlignSnapMode(EAlignSnapMode::Auto);  break;
+    case EAlignSnapMode::Auto:  SetAlignSnapMode(EAlignSnapMode::AxisX); break;
+    case EAlignSnapMode::AxisX: SetAlignSnapMode(EAlignSnapMode::AxisY); break;
+    default:                    SetAlignSnapMode(EAlignSnapMode::Off);   break;
+    }
+}
+
+void AObjectPlacer::SetAlignSnapMode(EAlignSnapMode NewMode)
+{
+    AlignSnapMode = NewMode;
+
+    const TCHAR* ModeName = TEXT("Off");
+    switch (AlignSnapMode)
+    {
+    case EAlignSnapMode::Auto:  ModeName = TEXT("Auto"); break;
+    case EAlignSnapMode::AxisX: ModeName = TEXT("X"); break;
+    case EAlignSnapMode::AxisY: ModeName = TEXT("Y"); break;
+    default: break;
+    }
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green,
+            FString::Printf(TEXT("Align Snap: %s"), ModeName));
+    }
+}
+
 void AObjectPlacer::BeginPlay()
 {
     Super::BeginPlay();
@@ -264,6 +296,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("ToggleLockLocation", IE_Pressed, this, &AObjectPlacer::OnToggleLockLocationKeyPressed);
     InputComponent->BindAction("ToggleLockRotation", IE_Pressed, this, &AObjectPlacer::OnToggleLockRotationKeyPressed);
     InputComponent->BindAction("ToggleLockScale", IE_Pressed, this, &AObjectPlacer::OnToggleLockScaleKeyPressed);
+    InputComponent->BindAction("CycleAlignSnap", IE_Pressed, this, &AObjectPlacer::OnCycleAlignSnapKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -390,6 +423,8 @@ void AObjectPlacer::OnLeftClick()
         {
             PlacedObjects.Add(NewObject);
             SetObjectColor(NewObject, FLinearColor::White);
+            ApplyAlignSnap(NewObject);
+
         }
     }
 
@@ -609,6 +644,110 @@ void AObjectPlacer::OnToggleLockScaleKeyPressed()
 void AObjectPlacer::OnReplaceObjectKeyPressed()
 {
     ReplaceSelectedObjects();
+}
+
+bool AObjectPlacer::ApplyAlignSnap(AActor* TargetActor)
+{
+    UE_LOG(LogTemp, Warning, TEXT("[AlignSnap] called Target=%s Mode=%d"),
+        TargetActor ? *TargetActor->GetName() : TEXT("null"), (int32)AlignSnapMode);
+
+    if (!TargetActor || AlignSnapMode == EAlignSnapMode::Off)
+    {
+        return false;
+    }
+
+    // 一番近いオブジェクトを基準にする
+    AActor* Reference = FindNearestPlacedObject(TargetActor);
+    if (!Reference)
+    {
+        return false;
+    }
+
+    const FVector Loc = TargetActor->GetActorLocation();
+    const FVector RefLoc = Reference->GetActorLocation();
+    const float DiffX = FMath::Abs(Loc.X - RefLoc.X);
+    const float DiffY = FMath::Abs(Loc.Y - RefLoc.Y);
+
+    UE_LOG(LogTemp, Warning, TEXT("[AlignSnap] Ref=%s DiffX=%.1f DiffY=%.1f Threshold=%.1f"),
+        *Reference->GetName(), DiffX, DiffY, AlignSnapThreshold);
+
+    // 揃える軸は1軸だけ(両軸を揃えると基準と同じ位置に重なるため)
+    bool bSnapX = false;
+    bool bSnapY = false;
+
+    switch (AlignSnapMode)
+    {
+    case EAlignSnapMode::AxisX:
+        bSnapX = (DiffX <= AlignSnapThreshold);
+        break;
+    case EAlignSnapMode::AxisY:
+        bSnapY = (DiffY <= AlignSnapThreshold);
+        break;
+    case EAlignSnapMode::Auto:
+        // ズレが小さいほうの軸を自動で選ぶ
+        if (DiffX <= DiffY)
+        {
+            bSnapX = (DiffX <= AlignSnapThreshold);
+        }
+        else
+        {
+            bSnapY = (DiffY <= AlignSnapThreshold);
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (!bSnapX && !bSnapY)
+    {
+        return false; // しきい値を超えているので何もしない
+    }
+
+    FVector NewLoc = Loc;
+    if (bSnapX) NewLoc.X = RefLoc.X;
+    if (bSnapY) NewLoc.Y = RefLoc.Y;
+
+    TargetActor->SetActorLocation(NewLoc);
+    return true;
+}
+
+AActor* AObjectPlacer::FindNearestPlacedObject(AActor* TargetActor) const
+{
+    if (!TargetActor)
+    {
+        return nullptr;
+    }
+
+    const FVector Origin = TargetActor->GetActorLocation();
+    AActor* Nearest = nullptr;
+    float BestDistSq = TNumericLimits<float>::Max();
+
+    for (AActor* Obj : PlacedObjects)
+    {
+        if (!IsValid(Obj) || Obj == TargetActor)
+        {
+            continue;
+        }
+
+        // XY平面上の距離で比較する(高さは無視)
+        const FVector Loc = Obj->GetActorLocation();
+        const float dx = Loc.X - Origin.X;
+        const float dy = Loc.Y - Origin.Y;
+        const float DistSq = dx * dx + dy * dy;
+
+        if (DistSq < BestDistSq)
+        {
+            BestDistSq = DistSq;
+            Nearest = Obj;
+        }
+    }
+
+    return Nearest;
+}
+
+void AObjectPlacer::OnCycleAlignSnapKeyPressed()
+{
+    CycleAlignSnapMode();
 }
 
 
