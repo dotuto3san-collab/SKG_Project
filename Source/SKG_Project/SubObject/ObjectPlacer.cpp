@@ -229,6 +229,26 @@ void AObjectPlacer::CycleAlignSnapMode()
 
 void AObjectPlacer::SetAlignSnapMode(EAlignSnapMode NewMode)
 {
+    const bool bWasOff = (AlignSnapMode == EAlignSnapMode::Off);
+    const bool bIsOff = (NewMode == EAlignSnapMode::Off);
+
+    if (bWasOff && !bIsOff)
+    {
+        // Off以外に切り替える瞬間: 今のグリッド設定を覚えてからオフにする
+        bSnapToGridBeforeAlign = bSnapToGrid;
+        bSnapToGrid = false;
+    }
+    else if (!bWasOff && bIsOff)
+    {
+        // Offに戻す瞬間: 覚えておいた設定に戻す
+        bSnapToGrid = bSnapToGridBeforeAlign;
+    }
+
+    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    {
+        TransformerPawn->SetSnappingEnabled(ETransformationType::TT_Translation, bSnapToGrid);
+    }
+
     AlignSnapMode = NewMode;
 
     const TCHAR* ModeName = TEXT("Off");
@@ -344,6 +364,8 @@ void AObjectPlacer::OnLeftClick()
         {
             SelectedObject = HitActor;
             bIsLeftMouseDown = true;
+            DragStartLocation = HitActor->GetActorLocation();
+            bDragTracking = true;
 
             bool bShiftHeld = IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift);
 
@@ -375,6 +397,12 @@ void AObjectPlacer::OnLeftClick()
             UE_LOG(LogTemp, Warning, TEXT("Gizmo hit: %s"), *HitActor->GetName());
     bIsLeftMouseDown = true;
             bIsLeftMouseDown = true;
+
+            if (SelectedObject)
+            {
+                DragStartLocation = SelectedObject->GetActorLocation();
+                bDragTracking = true;
+            }
 
             if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
             {
@@ -437,6 +465,21 @@ void AObjectPlacer::OnLeftClickReleased()
     if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
     {
         TransformerPawn->ClearDomain();
+    }
+
+    // 移動モードでオブジェクトを実際に動かした場合のみ、揃える処理を実行
+    if (bDragTracking)
+    {
+        bDragTracking = false;
+
+        if (CurrentTransformMode == ETransformationType::TT_Translation
+            && SelectedObject
+            && SelectedObjects.Num() == 1
+            && !LockedLocationObjects.Contains(SelectedObject)
+            && !SelectedObject->GetActorLocation().Equals(DragStartLocation, 1.f))
+        {
+            ApplyAlignSnap(SelectedObject);
+        }
     }
 }
 

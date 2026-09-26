@@ -214,6 +214,13 @@ protected:
     // XY平面上で一番近い配置済みオブジェクトを探す(自分自身は除く)
     AActor* FindNearestPlacedObject(AActor* TargetActor) const;
 
+    // ドラッグ開始位置(実際に動かしたかの判定用)
+    FVector DragStartLocation = FVector::ZeroVector;
+    bool bDragTracking = false;
+
+    // Align Snapを有効にする前の bSnapToGrid を覚えておき、Offに戻したときに復元する
+    bool bSnapToGridBeforeAlign = true;
+
     UFUNCTION()
     void OnCycleAlignSnapKeyPressed();
 };
