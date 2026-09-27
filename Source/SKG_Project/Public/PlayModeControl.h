@@ -46,6 +46,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "PlayMode")
 	void StopPlayMode();
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Recording")
+	class UTextureRenderTarget2D* CaptureRenderTarget = nullptr;
+
+	UFUNCTION(BlueprintCallable, Category = "Recording")
+	void SetCaptureRenderTarget(UTextureRenderTarget2D* NewTarget);
 
 	virtual void Tick(float DeltaTime) override;
 	virtual bool IsTickable() const override { return bRecordingEnabled || bWasRecordingLastTick; }

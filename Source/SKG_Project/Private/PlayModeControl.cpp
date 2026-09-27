@@ -47,6 +47,11 @@ void UPlayModeControl::StopPlayMode()
 	}
 }
 
+void UPlayModeControl::SetCaptureRenderTarget(UTextureRenderTarget2D* NewTarget)
+{
+	CaptureRenderTarget = NewTarget;
+}
+
 void UPlayModeControl::Tick(float DeltaTime)
 {
 	if (bRecordingEnabled && !bWasRecordingLastTick)
