@@ -48,7 +48,7 @@ public:
 
 
 	virtual void Tick(float DeltaTime) override;
-	virtual bool IsTickable() const override { return bRecordingEnabled; }
+	virtual bool IsTickable() const override { return bRecordingEnabled || bWasRecordingLastTick; }
 	virtual TStatId GetStatId() const override
 	{
 		RETURN_QUICK_DECLARE_CYCLE_STAT(UPlayModeControl, STATGROUP_Tickables);
