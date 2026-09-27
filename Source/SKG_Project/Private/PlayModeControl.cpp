@@ -85,6 +85,9 @@ void UPlayModeControl::Tick(float DeltaTime)
 
 		UE_LOG(LogTemp, Log, TEXT("Captured 1 frame: %d pixels, DeltaTime %.4f"), Bitmap.Num(), DeltaTime);
 
+		UE_LOG(LogTemp, Warning, TEXT("Bitmap.Num()=%d  Expected(W*H)=%d  (W=%d H=%d)"),
+			Bitmap.Num(), RecordingWidth * RecordingHeight, RecordingWidth, RecordingHeight);
+
 #if PLATFORM_WINDOWS
 		if (SinkWriter && Bitmap.Num() == RecordingWidth * RecordingHeight)
 		{
@@ -301,13 +304,21 @@ void UPlayModeControl::FinalizeCurrentVideoSegment()
 #if PLATFORM_WINDOWS
 	if (SinkWriter)
 	{
-		SinkWriter->Finalize();
+		HRESULT hr = SinkWriter->Finalize();
+		if (FAILED(hr))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Finalize FAILED: 0x%08x"), hr);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Video segment finalized."));
+		}
 		SinkWriter->Release();
 		SinkWriter = nullptr;
-		UE_LOG(LogTemp, Warning, TEXT("Video segment finalized."));
 	}
 #endif
 }
+
 
 FString UPlayModeControl::GetSegmentFilePath(int32 Index) const
 {
