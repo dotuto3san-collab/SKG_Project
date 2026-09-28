@@ -80,6 +80,9 @@ private:
 	int32 RecordingWidth = 0;
 	int32 RecordingHeight = 0;
 
+	int32 ActualCaptureWidth = 0;
+	int32 ActualCaptureHeight = 0;
+
 	int64 RecordingFrameDuration100ns = 0;
 	int64 RecordingFrameCount = 0;
 

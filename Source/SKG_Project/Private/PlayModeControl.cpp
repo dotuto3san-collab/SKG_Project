@@ -7,6 +7,8 @@
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "HAL/PlatformFileManager.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "TextureResource.h"
 
 #if PLATFORM_WINDOWS
 
@@ -18,6 +20,7 @@
 #pragma comment(lib, "mfplat.lib")
 #pragma comment(lib, "mfreadwrite.lib")
 #pragma comment(lib, "mfuuid.lib")
+
 
 #endif
 
@@ -71,30 +74,30 @@ void UPlayModeControl::Tick(float DeltaTime)
 	if (bRecordingEnabled)
 	{
 
-		if (!GEngine || !GEngine->GameViewport)
+		if (!CaptureRenderTarget)
 		{
 			bWasRecordingLastTick = bRecordingEnabled;
 			return;
 		}
 
-		FViewport* Viewport = GEngine->GameViewport->Viewport;
+		FTextureRenderTargetResource* RTResource = CaptureRenderTarget->GameThread_GetRenderTargetResource();
 
-		if (!Viewport)
+		if (!RTResource)
 		{
 			bWasRecordingLastTick = bRecordingEnabled;
 			return;
 		}
 
 		TArray<FColor> Bitmap;
-		Viewport->ReadPixels(Bitmap);
+		RTResource->ReadPixels(Bitmap);
 
 		UE_LOG(LogTemp, Log, TEXT("Captured 1 frame: %d pixels, DeltaTime %.4f"), Bitmap.Num(), DeltaTime);
 
 		UE_LOG(LogTemp, Warning, TEXT("Bitmap.Num()=%d  Expected(W*H)=%d  (W=%d H=%d)"),
-			Bitmap.Num(), RecordingWidth * RecordingHeight, RecordingWidth, RecordingHeight);
+			Bitmap.Num(), ActualCaptureWidth * ActualCaptureHeight, ActualCaptureWidth, ActualCaptureHeight);
 
 #if PLATFORM_WINDOWS
-		if (SinkWriter && Bitmap.Num() == RecordingWidth * RecordingHeight)
+		if (SinkWriter && Bitmap.Num() == ActualCaptureWidth * ActualCaptureHeight)
 		{
 			const DWORD BufferSize = RecordingWidth * RecordingHeight * 4; // RGB32v = 4byte/pixel
 
@@ -107,14 +110,15 @@ void UPlayModeControl::Tick(float DeltaTime)
 				hr = MediaBuffer->Lock(&RawBuffer, nullptr, nullptr);
 				if (SUCCEEDED(hr))
 				{
-					const int32 RowBytes = RecordingWidth * 4;
+					const int32 SrcRowBytes = ActualCaptureWidth * 4;
+					const int32 DstRowBytes = RecordingWidth * 4;
 					const uint8* SrcData = reinterpret_cast<const uint8*>(Bitmap.GetData());
 
 					for (int32 Row = 0; Row < RecordingHeight; ++Row)
 					{
-						const uint8* SrcRow = SrcData + (RecordingHeight - 1 - Row) * RowBytes;
-						BYTE* DstRow = RawBuffer + Row * RowBytes;
-						FMemory::Memcpy(DstRow, SrcRow, RowBytes);
+						const uint8* SrcRow = SrcData + (RecordingHeight - 1 - Row) * SrcRowBytes;
+						BYTE* DstRow = RawBuffer + Row * DstRowBytes;
+						FMemory::Memcpy(DstRow, SrcRow, DstRowBytes);
 					}
 
 					MediaBuffer->Unlock();
@@ -211,15 +215,17 @@ void UPlayModeControl::StartNewVideoSegment()
 			return;
 		}
 	}
-	if (!GEngine || !GEngine->GameViewport || !GEngine->GameViewport->Viewport)
+	if (!CaptureRenderTarget)
 	{
-		UE_LOG(LogTemp, Error, TEXT("No viewport available, cannot start recording."));
+		UE_LOG(LogTemp, Error, TEXT("CaptureRenderTarget is not set, cannot start recording."));
 		return;
 	}
 
-	const FIntPoint Size = GEngine->GameViewport->Viewport->GetSizeXY();
-	RecordingWidth = Size.X;
-	RecordingHeight = Size.Y;
+	ActualCaptureWidth = CaptureRenderTarget->SizeX;
+	ActualCaptureHeight = CaptureRenderTarget->SizeY;
+
+	RecordingWidth = ActualCaptureWidth;
+	RecordingHeight = ActualCaptureHeight;
 
 	RecordingWidth -= (RecordingWidth % 2);
 	RecordingHeight -= (RecordingHeight % 2);
