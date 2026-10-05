@@ -48,6 +48,8 @@ void UPlayModeControl::StopPlayMode()
 	{
 		World->GetTimerManager().ClearTimer(CaptureTimer);
 	}
+	bScreenshotEnabled = false;
+	bRecordingEnabled = false;
 }
 
 void UPlayModeControl::SetCaptureRenderTarget(UTextureRenderTarget2D* NewTarget)
