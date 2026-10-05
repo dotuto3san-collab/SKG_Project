@@ -332,7 +332,6 @@ void UPlayModeControl::FinalizeCurrentVideoSegment()
 #endif
 }
 
-
 FString UPlayModeControl::GetSegmentFilePath(int32 Index) const
 {
 	return FPaths::ProjectSavedDir()
