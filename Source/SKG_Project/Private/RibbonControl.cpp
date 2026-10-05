@@ -6,6 +6,12 @@
 #include "IDesktopPlatform.h"
 #include "Framework/Application/SlateApplication.h"
 
+#include "LidarPointCloud.h"
+#include "LidarPointCloudActor.h"
+#include "LidarPointCloudComponent.h"
+#include "Engine/World.h"
+
+
 void URibbonControl::ImportPointCloud()
 {
 	IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
@@ -19,14 +25,26 @@ void URibbonControl::ImportPointCloud()
 			TEXT("Select Point Cloud Data"),
 			TEXT(""),
 			TEXT(""),
-			TEXT("All Files (*.*)|*.*"),
+			TEXT("Point Cloud Files (*.las;*.laz;*.xyz;*.pts;*.e57)|*.las;*.laz;*.xyz;*.pts;*.e57|All Files (*.*)|*.*"),
 			EFileDialogFlags::None,
 			OutFiles
 		);
 
 		if (bOpened && OutFiles.Num() > 0)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Selected file: %s"), *OutFiles[0]);
+			ULidarPointCloud* PointCloud = ULidarPointCloud::CreateFromFile(OutFiles[0]);
+			if (!PointCloud)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Load Failed!: %s"), *OutFiles[0]);
+				return;
+			}
+
+			UWorld* World = GetWorld();
+			if (World)
+			{
+				ALidarPointCloudActor* Actor = World->SpawnActor<ALidarPointCloudActor>();
+				Actor->SetPointCloud(PointCloud);
+			}
 		}
 	}
 }

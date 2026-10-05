@@ -8,7 +8,7 @@ public class SKG_Project : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "RuntimeTransformer", "UMG" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "RuntimeTransformer", "UMG", "LidarPointCloudRuntime" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "DesktopPlatform" });
 
