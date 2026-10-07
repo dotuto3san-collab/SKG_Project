@@ -317,6 +317,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("ToggleLockRotation", IE_Pressed, this, &AObjectPlacer::OnToggleLockRotationKeyPressed);
     InputComponent->BindAction("ToggleLockScale", IE_Pressed, this, &AObjectPlacer::OnToggleLockScaleKeyPressed);
     InputComponent->BindAction("CycleAlignSnap", IE_Pressed, this, &AObjectPlacer::OnCycleAlignSnapKeyPressed);
+    InputComponent->BindAction("DeleteObject", IE_Pressed, this, &AObjectPlacer::OnDeleteObjectKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -654,18 +655,21 @@ void AObjectPlacer::RefreshGizmoSelectionForLock()
             break;
         }
 
-        UE_LOG(LogTemp, Warning, TEXT("RefreshGizmo - Obj: %s, LockedForCurrentMode: %s"),
-            *Obj->GetName(), bLockedForCurrentMode ? TEXT("true") : TEXT("false"));
+        const bool bCurrentlyActive = GizmoActiveObjects.Contains(Obj);
 
-
-        if (bLockedForCurrentMode)
+        if (bLockedForCurrentMode && bCurrentlyActive)
         {
+            // ロックされていて、今ギズモに登録されている → 外す
             TransformerPawn->DeselectActor(Obj);
+            GizmoActiveObjects.Remove(Obj);
         }
-        else
+        else if (!bLockedForCurrentMode && !bCurrentlyActive)
         {
+            // ロックされていなくて、まだギズモに登録されていない(新規選択を含む) → 登録する
             TransformerPawn->SelectActor(Obj, true);
+            GizmoActiveObjects.Add(Obj);
         }
+        // それ以外(すでに望ましい状態)は何もしない
     }
 }
 
@@ -793,4 +797,46 @@ void AObjectPlacer::OnCycleAlignSnapKeyPressed()
     CycleAlignSnapMode();
 }
 
+void AObjectPlacer::DeleteSelectedObjects()
+{
+    if (SelectedObjects.Num() == 0)
+    {
+        return;
+    }
 
+    ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn());
+
+    for (AActor* Obj : SelectedObjects)
+    {
+        if (!IsValid(Obj))
+        {
+            continue;
+        }
+
+        // ギズモの選択対象から外す
+        if (TransformerPawn)
+        {
+            TransformerPawn->DeselectActor(Obj);
+        }
+
+        // 各リスト・セットから取り除く(消えたポインタが残らないように)
+        PlacedObjects.Remove(Obj);
+        LockedLocationObjects.Remove(Obj);
+        LockedRotationObjects.Remove(Obj);
+        LockedScaleObjects.Remove(Obj);
+
+        // ワールドから削除
+        Obj->Destroy();
+    }
+
+    // 選択状態をクリア
+    SelectedObjects.Empty();
+    SelectedObject = nullptr;
+
+    UpdateHUDText();
+}
+
+void AObjectPlacer::OnDeleteObjectKeyPressed()
+{
+    DeleteSelectedObjects();
+}

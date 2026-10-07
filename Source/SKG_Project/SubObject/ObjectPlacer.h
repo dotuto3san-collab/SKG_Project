@@ -84,6 +84,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "Object Placement|Snap")
     EAlignSnapMode GetAlignSnapMode() const { return AlignSnapMode; }
 
+    UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void DeleteSelectedObjects();
+
 protected:
     virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;
@@ -183,6 +186,9 @@ protected:
     UPROPERTY()
     TSet<AActor*> LockedScaleObjects;
 
+    UPROPERTY()
+    TSet<AActor*> GizmoActiveObjects;
+
     void RefreshGizmoSelectionForLock();
 
     UFUNCTION()
@@ -223,4 +229,7 @@ protected:
 
     UFUNCTION()
     void OnCycleAlignSnapKeyPressed();
+
+    UFUNCTION()
+    void OnDeleteObjectKeyPressed();
 };
