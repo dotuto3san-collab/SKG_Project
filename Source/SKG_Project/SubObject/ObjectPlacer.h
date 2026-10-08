@@ -84,6 +84,18 @@ public:
     UFUNCTION(BlueprintPure, Category = "Object Placement|Snap")
     EAlignSnapMode GetAlignSnapMode() const { return AlignSnapMode; }
 
+    UFUNCTION(BlueprintPure, Category = "Object Placement|Snap")
+    bool IsAlignSnapModeOff() const { return AlignSnapMode == EAlignSnapMode::Off; }
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement|Snap")
+    bool IsAlignSnapModeAuto() const { return AlignSnapMode == EAlignSnapMode::Auto; }
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement|Snap")
+    bool IsAlignSnapModeX() const { return AlignSnapMode == EAlignSnapMode::AxisX; }
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement|Snap")
+    bool IsAlignSnapModeY() const { return AlignSnapMode == EAlignSnapMode::AxisY; }
+
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
     void DeleteSelectedObjects();
 
