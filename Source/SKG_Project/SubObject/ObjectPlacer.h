@@ -96,6 +96,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "Object Placement|Snap")
     bool IsAlignSnapModeY() const { return AlignSnapMode == EAlignSnapMode::AxisY; }
 
+    UFUNCTION(BlueprintCallable, Category = "Object Placement|Snap")
+    void SetMainWidgetRef(UUserWidget* NewWidget) { MainWidgetRef = NewWidget; }
+
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
     void DeleteSelectedObjects();
 
@@ -241,6 +244,9 @@ protected:
 
     UFUNCTION()
     void OnCycleAlignSnapKeyPressed();
+
+    UPROPERTY()
+    UUserWidget* MainWidgetRef = nullptr;
 
     UFUNCTION()
     void OnDeleteObjectKeyPressed();

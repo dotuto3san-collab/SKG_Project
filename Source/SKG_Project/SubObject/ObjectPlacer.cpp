@@ -265,6 +265,14 @@ void AObjectPlacer::SetAlignSnapMode(EAlignSnapMode NewMode)
         GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green,
             FString::Printf(TEXT("Align Snap: %s"), ModeName));
     }
+
+    if (MainWidgetRef)
+    {
+        if (UFunction* Func = MainWidgetRef->FindFunction(FName("ChangeSnapButtonView")))
+        {
+            MainWidgetRef->ProcessEvent(Func, nullptr);
+        }
+    }
 }
 
 void AObjectPlacer::BeginPlay()
