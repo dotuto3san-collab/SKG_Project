@@ -326,6 +326,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("ToggleLockScale", IE_Pressed, this, &AObjectPlacer::OnToggleLockScaleKeyPressed);
     InputComponent->BindAction("CycleAlignSnap", IE_Pressed, this, &AObjectPlacer::OnCycleAlignSnapKeyPressed);
     InputComponent->BindAction("DeleteObject", IE_Pressed, this, &AObjectPlacer::OnDeleteObjectKeyPressed);
+    InputComponent->BindAction("ToggleHumanWander", IE_Pressed, this, &AObjectPlacer::OnToggleHumanWanderKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -842,6 +843,30 @@ void AObjectPlacer::DeleteSelectedObjects()
     SelectedObject = nullptr;
 
     UpdateHUDText();
+}
+
+void AObjectPlacer::OnToggleHumanWanderKeyPressed()
+{
+    bHumansWandering = !bHumansWandering;
+
+    for (AActor* Obj : PlacedObjects)
+    {
+        if (!IsValid(Obj))
+        {
+            continue;
+        }
+
+        if (APlaceableHumanActor* Human = Cast<APlaceableHumanActor>(Obj))
+        {
+            Human->SetWandering(bHumansWandering);
+        }
+    }
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan,
+            bHumansWandering ? TEXT("Human Wander: ON") : TEXT("Human Wander: OFF"));
+    }
 }
 
 void AObjectPlacer::OnDeleteObjectKeyPressed()

@@ -247,6 +247,12 @@ protected:
 
     UPROPERTY()
     UUserWidget* MainWidgetRef = nullptr;
+ 
+    UPROPERTY()
+    bool bHumansWandering = false;
+
+    UFUNCTION()
+    void OnToggleHumanWanderKeyPressed();
 
     UFUNCTION()
     void OnDeleteObjectKeyPressed();
