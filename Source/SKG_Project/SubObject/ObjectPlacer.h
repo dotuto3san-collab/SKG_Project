@@ -254,6 +254,12 @@ protected:
     UFUNCTION()
     void OnToggleHumanWanderKeyPressed();
 
+    UPROPERTY()
+    bool bHumansDangerTimerEnabled = false;
+
+    UFUNCTION()
+    void OnToggleHumanDangerTimerKeyPressed();
+
     UFUNCTION()
     void OnDeleteObjectKeyPressed();
 };

@@ -27,6 +27,12 @@ public:
     UFUNCTION(BlueprintPure, Category = "Wander")
     bool IsWandering() const { return bIsWandering; }
 
+    UFUNCTION(BlueprintCallable, Category = "Danger Timer")
+    void SetDangerTimerEnabled(bool bEnable);
+
+    UFUNCTION(BlueprintPure, Category = "Danger Timer")
+    bool IsDangerTimerEnabled() const { return bDangerTimerEnabled; }
+
 protected:
     virtual void BeginPlay() override;
 
@@ -49,6 +55,22 @@ protected:
     // 歩く速さ(cm/秒)
     UPROPERTY(EditAnywhere, Category = "Wander", meta = (ClampMin = "0.0"))
     float WalkSpeed = 100.f;
+
+    // この機能が有効かどうか
+    UPROPERTY(BlueprintReadOnly, Category = "Danger Timer")
+    bool bDangerTimerEnabled = false;
+
+    // Dangerになるまでの待ち時間の範囲(秒)。Blueprint側で人ごとに調整可能だが、
+    // 同じBP_PlaceObject_Humanから複製されるため、通常は全員共通の値になる
+    UPROPERTY(EditAnywhere, Category = "Danger Timer", meta = (ClampMin = "0.0"))
+    float MinTimeToDanger = 10.f;
+
+    UPROPERTY(EditAnywhere, Category = "Danger Timer", meta = (ClampMin = "0.0"))
+    float MaxTimeToDanger = 60.f;
+
+    // 今、Dangerになるまであと何秒か(カウントダウン)
+    UPROPERTY()
+    float TimeUntilDanger = 0.f;
 
     // 今向かっている目的地
     UPROPERTY()

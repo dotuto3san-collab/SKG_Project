@@ -9,6 +9,18 @@ void APlaceableHumanActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
+    // ランダム時間でDangerになるタイマー処理(歩行の有無に関わらず動く)
+    if (bDangerTimerEnabled)
+    {
+        TimeUntilDanger -= DeltaTime;
+        if (TimeUntilDanger <= 0.f)
+        {
+            bDangerTimerEnabled = false; // 一度発動したら止める(繰り返さない)
+            SetHumanStatus(EHumanStatus::Danger);
+        }
+    }
+
+    // 歩行処理(bIsWanderingがfalseなら、ここから先は実行しない)
     if (!bIsWandering)
     {
         return;
@@ -16,24 +28,21 @@ void APlaceableHumanActor::Tick(float DeltaTime)
 
     const FVector CurrentLocation = GetActorLocation();
     FVector ToTarget = CurrentTargetLocation - CurrentLocation;
-    ToTarget.Z = 0.f; // 高さは無視して、水平方向だけで判定・移動する
+    ToTarget.Z = 0.f;
 
     const float DistanceToTarget = ToTarget.Size();
 
-    // 目的地に十分近づいたら、次の目的地を選び直す
-    const float ArrivalThreshold = 20.f; // cm
+    const float ArrivalThreshold = 20.f;
     if (DistanceToTarget <= ArrivalThreshold)
     {
         PickNewWanderTarget();
         return;
     }
 
-    // 目的地の方向へ、WalkSpeed分だけ進む
     const FVector Direction = ToTarget.GetSafeNormal();
     const FVector NewLocation = CurrentLocation + Direction * WalkSpeed * DeltaTime;
     SetActorLocation(NewLocation);
 
-    // 進んでいる方向を向かせる
     const FRotator NewRotation = Direction.Rotation();
     SetActorRotation(NewRotation);
 }
@@ -78,6 +87,22 @@ void APlaceableHumanActor::SetWandering(bool bEnable)
     if (bIsWandering)
     {
         PickNewWanderTarget();
+    }
+}
+
+void APlaceableHumanActor::SetDangerTimerEnabled(bool bEnable)
+{
+    // すでにDanger状態の人には、新しくタイマーを仕掛けない
+    if (bEnable && HumanStatus != EHumanStatus::Normal)
+    {
+        return;
+    }
+
+    bDangerTimerEnabled = bEnable;
+
+    if (bDangerTimerEnabled)
+    {
+        TimeUntilDanger = FMath::RandRange(MinTimeToDanger, MaxTimeToDanger);
     }
 }
 

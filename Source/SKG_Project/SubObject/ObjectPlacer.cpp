@@ -327,6 +327,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("CycleAlignSnap", IE_Pressed, this, &AObjectPlacer::OnCycleAlignSnapKeyPressed);
     InputComponent->BindAction("DeleteObject", IE_Pressed, this, &AObjectPlacer::OnDeleteObjectKeyPressed);
     InputComponent->BindAction("ToggleHumanWander", IE_Pressed, this, &AObjectPlacer::OnToggleHumanWanderKeyPressed);
+    InputComponent->BindAction("ToggleHumanDangerTimer", IE_Pressed, this, &AObjectPlacer::OnToggleHumanDangerTimerKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -866,6 +867,30 @@ void AObjectPlacer::OnToggleHumanWanderKeyPressed()
     {
         GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan,
             bHumansWandering ? TEXT("Human Wander: ON") : TEXT("Human Wander: OFF"));
+    }
+}
+
+void AObjectPlacer::OnToggleHumanDangerTimerKeyPressed()
+{
+    bHumansDangerTimerEnabled = !bHumansDangerTimerEnabled;
+
+    for (AActor* Obj : PlacedObjects)
+    {
+        if (!IsValid(Obj))
+        {
+            continue;
+        }
+
+        if (APlaceableHumanActor* Human = Cast<APlaceableHumanActor>(Obj))
+        {
+            Human->SetDangerTimerEnabled(bHumansDangerTimerEnabled);
+        }
+    }
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Orange,
+            bHumansDangerTimerEnabled ? TEXT("Danger Timer: ON") : TEXT("Danger Timer: OFF"));
     }
 }
 
