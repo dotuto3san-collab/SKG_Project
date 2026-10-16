@@ -263,4 +263,6 @@ protected:
 
     UFUNCTION()
     void OnDeleteObjectKeyPressed();
+
+    void ClearGizmoSelection();
 };

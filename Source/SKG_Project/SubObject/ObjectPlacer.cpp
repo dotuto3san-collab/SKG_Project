@@ -164,7 +164,7 @@ void AObjectPlacer::ReplaceSelectedObjects()
     // 先に選択解除してから、破棄・生成する
     if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
     {
-        TransformerPawn->DeselectAll();
+        ClearGizmoSelection();
     }
 
     TArray<AActor*> NewSelection;
@@ -247,10 +247,7 @@ void AObjectPlacer::SetAlignSnapMode(EAlignSnapMode NewMode)
         bSnapToGrid = bSnapToGridBeforeAlign;
     }
 
-    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
-    {
-        TransformerPawn->SetSnappingEnabled(ETransformationType::TT_Translation, bSnapToGrid);
-    }
+    ClearGizmoSelection();
 
     AlignSnapMode = NewMode;
 
@@ -373,17 +370,12 @@ void AObjectPlacer::OnLeftClick()
     {
         AActor* HitActor = Hit.GetActor();
 
-        // ↓ ここを元に戻す
         if (HitActor && PlacedObjects.Contains(HitActor))
         {
             SelectedObject = HitActor;
             bIsLeftMouseDown = true;
             DragStartLocation = HitActor->GetActorLocation();
-
-            /*====================追加==================*/
-			// ドラッグ開始時のTransformを記録しておく
             DragStartTransform = HitActor->GetActorTransform();
-            
             bDragTracking = true;
 
             bool bShiftHeld = IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift);
@@ -396,17 +388,14 @@ void AObjectPlacer::OnLeftClick()
                 }
                 SelectedObjects.Empty();
 
-                // Shiftを押していない新規選択の場合、TransformerPawn側の選択もクリアする
-                if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
-                {
-                    TransformerPawn->DeselectAll();
-                }
+                // ★変更①:外側の if を外して1行にする
+                ClearGizmoSelection();
             }
 
             SelectedObjects.AddUnique(HitActor);
             SetObjectHighlight(HitActor, true);
 
-            RefreshGizmoSelectionForLock(); // ここで選択(SelectActor)をまとめて行う
+            RefreshGizmoSelectionForLock();
 
             return;
         }
@@ -414,8 +403,7 @@ void AObjectPlacer::OnLeftClick()
         if (HitActor && HitActor->GetClass()->GetName().Contains(TEXT("Gizmo")))
         {
             UE_LOG(LogTemp, Warning, TEXT("Gizmo hit: %s"), *HitActor->GetName());
-    bIsLeftMouseDown = true;
-            bIsLeftMouseDown = true;
+            bIsLeftMouseDown = true;   // ★変更②:重複していた1行を削除
 
             if (SelectedObject)
             {
@@ -436,8 +424,14 @@ void AObjectPlacer::OnLeftClick()
             return;
         }
 
+        // ★変更③:ログ追加と、解除の条件・中身の整理
+        UE_LOG(LogTemp, Warning, TEXT("[Click] Hit=%s Selected=%s Num=%d Class=%s"),
+            HitActor ? *HitActor->GetName() : TEXT("null"),
+            SelectedObject ? *SelectedObject->GetName() : TEXT("null"),
+            SelectedObjects.Num(),
+            SelectedObjectClass ? *SelectedObjectClass->GetName() : TEXT("null"));
 
-        if (SelectedObject)
+        if (SelectedObject || SelectedObjects.Num() > 0)
         {
             for (AActor* Obj : SelectedObjects)
             {
@@ -445,14 +439,11 @@ void AObjectPlacer::OnLeftClick()
             }
             SelectedObjects.Empty();
             SelectedObject = nullptr;
-
-            if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
-            {
-                TransformerPawn->DeselectAll();
-            }
+            ClearGizmoSelection();
             return;
         }
 
+        // ここから下は変更なし(配置の処理)
         FVector PlacementLocation = Hit.Location + FVector(0.f, 0.f, 50.f);
 
         if (bSnapToGrid)
@@ -472,8 +463,6 @@ void AObjectPlacer::OnLeftClick()
             SetObjectColor(NewObject, FLinearColor::White);
             ApplyAlignSnap(NewObject);
 
-            /*====================追加==================*/
-            // Undo/Redo 履歴に設置を記録
             URedoUndoButton* UndoComp = nullptr;
             if (APawn* MyPawn = GetPawn())
             {
@@ -481,7 +470,6 @@ void AObjectPlacer::OnLeftClick()
             }
             if (!UndoComp)
             {
-                // Pawn から取れなかった場合、自分自身(PlayerController)やワールドから検索
                 UndoComp = FindComponentByClass<URedoUndoButton>();
             }
 
@@ -901,6 +889,8 @@ void AObjectPlacer::DeleteSelectedObjects()
         LockedRotationObjects.Remove(Obj);
         LockedScaleObjects.Remove(Obj);
 
+        GizmoActiveObjects.Remove(Obj);
+
         // ワールドから削除
         Obj->Destroy();
     }
@@ -963,4 +953,13 @@ void AObjectPlacer::OnToggleHumanDangerTimerKeyPressed()
 void AObjectPlacer::OnDeleteObjectKeyPressed()
 {
     DeleteSelectedObjects();
+}
+
+void AObjectPlacer::ClearGizmoSelection()
+{
+    if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
+    {
+        TransformerPawn->DeselectAll();
+    }
+    GizmoActiveObjects.Empty();
 }
