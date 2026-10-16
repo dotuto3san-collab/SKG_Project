@@ -2,6 +2,9 @@
 #include "TransformerPawn.h"
 #include "Engine/Engine.h"
 
+/*====================追加==================*/
+#include "RedoUndoButton.h"
+
 FVector AObjectPlacer::GetSelectedObjectLocation() const
 {
     if (SelectedObject)
@@ -376,6 +379,11 @@ void AObjectPlacer::OnLeftClick()
             SelectedObject = HitActor;
             bIsLeftMouseDown = true;
             DragStartLocation = HitActor->GetActorLocation();
+
+            /*====================追加==================*/
+			// ドラッグ開始時のTransformを記録しておく
+            DragStartTransform = HitActor->GetActorTransform();
+            
             bDragTracking = true;
 
             bool bShiftHeld = IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift);
@@ -464,6 +472,27 @@ void AObjectPlacer::OnLeftClick()
             SetObjectColor(NewObject, FLinearColor::White);
             ApplyAlignSnap(NewObject);
 
+            /*====================追加==================*/
+            // Undo/Redo 履歴に設置を記録
+            URedoUndoButton* UndoComp = nullptr;
+            if (APawn* MyPawn = GetPawn())
+            {
+                UndoComp = MyPawn->FindComponentByClass<URedoUndoButton>();
+            }
+            if (!UndoComp)
+            {
+                // Pawn から取れなかった場合、自分自身(PlayerController)やワールドから検索
+                UndoComp = FindComponentByClass<URedoUndoButton>();
+            }
+
+            if (UndoComp)
+            {
+                UndoComp->RecordSpawnCommand(NewObject);
+            }
+            else
+            {
+                UE_LOG(LogTemp, Error, TEXT("[UndoSystem] Failed to find RedoUndoButton Component!"));
+            }
         }
     }
 
@@ -482,6 +511,26 @@ void AObjectPlacer::OnLeftClickReleased()
     if (bDragTracking)
     {
         bDragTracking = false;
+
+        /*====================追加==================*/
+        // ドラッグ前後の位置が変わっていたら Undo/Redo 履歴に記録
+        if (SelectedObject && !SelectedObject->GetActorTransform().Equals(DragStartTransform, 0.1f))
+{
+    URedoUndoButton* UndoComp = nullptr;
+    if (APawn* MyPawn = GetPawn())
+    {
+        UndoComp = MyPawn->FindComponentByClass<URedoUndoButton>();
+    }
+    if (!UndoComp)
+    {
+        UndoComp = FindComponentByClass<URedoUndoButton>();
+    }
+
+    if (UndoComp)
+    {
+        UndoComp->RecordTransformCommand(SelectedObject, DragStartTransform, SelectedObject->GetActorTransform());
+    }
+}
 
         if (CurrentTransformMode == ETransformationType::TT_Translation
             && SelectedObject
@@ -827,6 +876,23 @@ void AObjectPlacer::DeleteSelectedObjects()
         if (TransformerPawn)
         {
             TransformerPawn->DeselectActor(Obj);
+        }
+
+        /*====================追加==================*/
+        // Undo/Redo 履歴に削除を記録
+        URedoUndoButton* UndoComp = nullptr;
+        if (APawn* MyPawn = GetPawn())
+        {
+            UndoComp = MyPawn->FindComponentByClass<URedoUndoButton>();
+        }
+        if (!UndoComp)
+        {
+            UndoComp = FindComponentByClass<URedoUndoButton>();
+        }
+
+        if (UndoComp)
+        {
+            UndoComp->RecordDestroyCommand(Obj);
         }
 
         // 各リスト・セットから取り除く(消えたポインタが残らないように)

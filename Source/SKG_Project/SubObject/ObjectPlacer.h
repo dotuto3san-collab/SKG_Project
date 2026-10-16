@@ -237,6 +237,7 @@ protected:
 
     // ドラッグ開始位置(実際に動かしたかの判定用)
     FVector DragStartLocation = FVector::ZeroVector;
+    FTransform DragStartTransform;
     bool bDragTracking = false;
 
     // Align Snapを有効にする前の bSnapToGrid を覚えておき、Offに戻したときに復元する
