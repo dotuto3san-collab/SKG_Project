@@ -884,15 +884,10 @@ void AObjectPlacer::DeleteSelectedObjects()
         }
 
         // 各リスト・セットから取り除く(消えたポインタが残らないように)
-        PlacedObjects.Remove(Obj);
         LockedLocationObjects.Remove(Obj);
         LockedRotationObjects.Remove(Obj);
         LockedScaleObjects.Remove(Obj);
-
         GizmoActiveObjects.Remove(Obj);
-
-        // ワールドから削除
-        Obj->Destroy();
     }
 
     // 選択状態をクリア
