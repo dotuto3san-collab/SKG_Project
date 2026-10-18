@@ -12,6 +12,9 @@
 #include "Engine/World.h"
 #include "Async/Async.h"
 
+#include "SceneSaveGame.h"
+#include "Kismet/GameplayStatics.h"
+#include "EngineUtils.h"
 
 void URibbonControl::ImportPointCloud()
 {
@@ -94,30 +97,127 @@ void URibbonControl::ImportPointCloud()
 
 void URibbonControl::LoadSceneFile()
 {
-	IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
-	if (DesktopPlatform)
-	{
-		TArray<FString> OutFiles;
-		bool bOpened = DesktopPlatform->OpenFileDialog(
-			nullptr,
-			TEXT("Selected Scene"),
-			TEXT(""),
-			TEXT(""),
-			TEXT("Scene Files (*.json;*.scene)|*.json;*.scene|All Files (*.*)|*.*"),
-			EFileDialogFlags::None,
-			OutFiles
-		);
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: World is null"));
+        return;
+    }
+    if (PlaceableBaseClasses.Num() == 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: PlaceableBaseClasses is not set"));
+        return;
+    }
+    if (!UGameplayStatics::DoesSaveGameExist(TEXT("Scene01"), 0))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: save data not found"));
+        return;
+    }
 
-		if (bOpened && OutFiles.Num() > 0)
-		{
-			const FString SelectedFile = OutFiles[0];
-			UE_LOG(LogTemp, Warning, TEXT("Loaded scene file: %s"), *SelectedFile);
-		}
-	}
+    USceneSaveGame* LoadData = Cast<USceneSaveGame>(
+        UGameplayStatics::LoadGameFromSlot(TEXT("Scene01"), 0));
+    if (!LoadData)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: failed to load save data"));
+        return;
+    }
+
+    // 1) Remove the objects that are placed now (skip hidden ones)
+    TArray<AActor*> ToDestroy;
+    for (const TSubclassOf<AActor>& BaseClass : PlaceableBaseClasses)
+    {
+        if (!BaseClass)
+        {
+            continue;
+        }
+
+        for (TActorIterator<AActor> It(World, BaseClass); It; ++It)
+        {
+            AActor* Actor = *It;
+            if (IsValid(Actor) && !Actor->IsHidden())
+            {
+                ToDestroy.AddUnique(Actor);
+            }
+        }
+    }
+
+    for (AActor* Actor : ToDestroy)
+    {
+        Actor->Destroy();
+    }
+
+    // 2) Spawn the saved objects again
+    int32 SpawnedCount = 0;
+    for (const FSavedObjectData& Data : LoadData->Objects)
+    {
+        UClass* ObjClass = StaticLoadClass(AActor::StaticClass(), nullptr, *Data.ClassPath);
+        if (!ObjClass)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: class not found: %s"), *Data.ClassPath);
+            continue;
+        }
+
+        FActorSpawnParameters Params;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+        AActor* NewActor = World->SpawnActor<AActor>(ObjClass, Data.Transform, Params);
+        if (NewActor)
+        {
+            ++SpawnedCount;
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: destroyed=%d spawned=%d / %d"),
+        ToDestroy.Num(), SpawnedCount, LoadData->Objects.Num());
 }
 
 void URibbonControl::SaveSceneFile()
 {
+    UWorld* World = GetWorld();
+    if (!World || PlaceableBaseClasses.Num() == 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SaveSceneFile: World or PlaceableBaseClasses is not set"));
+        return;
+    }
+
+    USceneSaveGame* SaveData = Cast<USceneSaveGame>(
+        UGameplayStatics::CreateSaveGameObject(USceneSaveGame::StaticClass()));
+
+    // Remember actors already saved, so none is saved twice
+    TSet<AActor*> Saved;
+
+    for (const TSubclassOf<AActor>& BaseClass : PlaceableBaseClasses)
+    {
+        if (!BaseClass)
+        {
+            continue;
+        }
+
+        for (TActorIterator<AActor> It(World, BaseClass); It; ++It)
+        {
+            AActor* Actor = *It;
+            // Skip deleted actors (the undo system may only hide them)
+            if (!IsValid(Actor) || Actor->IsActorBeingDestroyed() || Actor->IsHidden())
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Skipped (deleted or hidden): %s"), *Actor->GetName());
+                continue;
+            }
+            if (Saved.Contains(Actor))
+            {
+                continue;
+            }
+            Saved.Add(Actor);
+
+            FSavedObjectData Data;
+            Data.ClassPath = Actor->GetClass()->GetPathName();
+            Data.Transform = Actor->GetActorTransform();
+            SaveData->Objects.Add(Data);
+        }
+    }
+
+    const bool bSaved = UGameplayStatics::SaveGameToSlot(SaveData, TEXT("Scene01"), 0);
+    UE_LOG(LogTemp, Warning, TEXT("SaveSceneFile: objects=%d saved=%d"),
+        SaveData->Objects.Num(), bSaved ? 1 : 0);
 }
 
 void URibbonControl::Recents()

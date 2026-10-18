@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
+#include "GameFramework/Actor.h"
 #include "RibbonControl.generated.h"
 
 /**
@@ -26,4 +27,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "File")
 	void Recents();
+
+	// Set this in the Blueprint to the parent classes of all placed objects
+	// (for example: one for furniture/equipment, one for people)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scene")
+	TArray<TSubclassOf<AActor>> PlaceableBaseClasses;
 };
