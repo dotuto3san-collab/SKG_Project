@@ -102,6 +102,17 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
     void DeleteSelectedObjects();
 
+    // シーン読み込みの「直前」に呼ぶ。選択・ギズモ・ロックの状態を全部クリアする
+    UFUNCTION(BlueprintCallable, Category = "Object Placement|SaveLoad")
+    void ResetForSceneLoad();
+
+    // 読み込みで生成したActorを、配置済みオブジェクトとして登録する(1個ごとに呼ぶ)
+    UFUNCTION(BlueprintCallable, Category = "Object Placement|SaveLoad")
+    void RegisterLoadedActor(AActor* LoadedActor);
+
+    UFUNCTION(Exec)
+    void DebugSimulateReload();
+
 protected:
     virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;

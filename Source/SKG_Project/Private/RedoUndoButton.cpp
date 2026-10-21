@@ -1,3 +1,4 @@
+#include "RedoUndoButton.h"
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "RedoUndoButton.h"
@@ -35,6 +36,13 @@ void URedoUndoButton::RecordDestroyCommand(AActor* TargetActor)
 	UndoStack.Push(Cmd);
 	RedoStack.Empty();
 	UE_LOG(LogTemp, Warning, TEXT("[UndoSystem] Destroy Recorded: %s (Stack Size: %d)"), *TargetActor->GetName(), UndoStack.Num());
+}
+
+void URedoUndoButton::ClearHistory()
+{
+	UndoStack.Empty();
+	RedoStack.Empty();
+	UE_LOG(LogTemp, Warning, TEXT("[UndoSystem] History cleared."));
 }
 
 bool URedoUndoButton::PerformUndo()

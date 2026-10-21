@@ -897,6 +897,114 @@ void AObjectPlacer::DeleteSelectedObjects()
     UpdateHUDText();
 }
 
+void AObjectPlacer::ResetForSceneLoad()
+{
+    // ハイライトを外す(まだ生きているActorだけ)
+    for (AActor* Obj : SelectedObjects)
+    {
+        if (IsValid(Obj))
+        {
+            SetObjectHighlight(Obj, false);
+        }
+    }
+
+    // ギズモ側の選択を解除する(GizmoActiveObjectsも空になる)
+    // ※Actorを破棄する「前」に呼ぶことが重要
+    ClearGizmoSelection();
+
+    SelectedObjects.Empty();
+    SelectedObject = nullptr;
+
+    LockedLocationObjects.Empty();
+    LockedRotationObjects.Empty();
+    LockedScaleObjects.Empty();
+
+    bIsLeftMouseDown = false;
+    bDragTracking = false;
+
+    // すでに破棄されたActorを配置済みリストから掃除する
+    PlacedObjects.RemoveAll([](AActor* Obj) { return !IsValid(Obj); });
+
+    // Undo/Redoの履歴もクリアする(読み込み前のActorを指した古い履歴を残さない)
+    URedoUndoButton* UndoComp = nullptr;
+    if (APawn* MyPawn = GetPawn())
+    {
+        UndoComp = MyPawn->FindComponentByClass<URedoUndoButton>();
+    }
+    if (!UndoComp)
+    {
+        UndoComp = FindComponentByClass<URedoUndoButton>();
+    }
+    if (UndoComp)
+    {
+        UndoComp->ClearHistory();
+    }
+
+    UpdateHUDText();
+
+    UE_LOG(LogTemp, Warning, TEXT("[SceneLoad] Reset done. PlacedObjects=%d"), PlacedObjects.Num());
+
+}
+
+void AObjectPlacer::RegisterLoadedActor(AActor* LoadedActor)
+{
+    if (!IsValid(LoadedActor))
+    {
+        return;
+    }
+
+    // 破棄済みのものが残っていたら、ここでも掃除しておく
+    PlacedObjects.RemoveAll([](AActor* Obj) { return !IsValid(Obj); });
+
+    PlacedObjects.AddUnique(LoadedActor);
+
+    // 新規配置と同じく、白を入れて初期の黒を避ける
+    SetObjectColor(LoadedActor, FLinearColor::White);
+
+    UE_LOG(LogTemp, Warning, TEXT("[SceneLoad] Registered %s (PlacedObjects=%d)"),
+        *LoadedActor->GetName(), PlacedObjects.Num());
+}
+
+void AObjectPlacer::DebugSimulateReload()
+{
+    // 今ある(非表示でない)オブジェクトの「クラスと位置」を控える = 「保存」のつもり
+    struct FSnap
+    {
+        UClass* Class;
+        FTransform Transform;
+    };
+    TArray<FSnap> Snaps;
+
+    for (AActor* Obj : PlacedObjects)
+    {
+        if (IsValid(Obj) && !Obj->IsHidden())
+        {
+            Snaps.Add({ Obj->GetClass(), Obj->GetActorTransform() });
+        }
+    }
+
+    // ここから「読み込み」のつもり
+    ResetForSceneLoad();
+
+    for (AActor* Obj : PlacedObjects)
+    {
+        if (IsValid(Obj))
+        {
+            Obj->Destroy();
+        }
+    }
+    PlacedObjects.Empty();
+
+    for (const FSnap& S : Snaps)
+    {
+        AActor* NewActor = GetWorld()->SpawnActor<AActor>(S.Class, S.Transform);
+        RegisterLoadedActor(NewActor);
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[SceneLoad] DebugSimulateReload done. Count=%d"), Snaps.Num());
+
+}
+
 void AObjectPlacer::OnToggleHumanWanderKeyPressed()
 {
     bHumansWandering = !bHumansWandering;

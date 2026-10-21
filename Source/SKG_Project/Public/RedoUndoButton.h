@@ -144,6 +144,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UndoRedo")
 	void RecordDestroyCommand(AActor* TargetActor);
 
+	// Undo/Redoの履歴を全部消す(シーン読み込み時に使う)
+	UFUNCTION(BlueprintCallable, Category = "UndoRedo")
+	void ClearHistory();
+
 private:
 	TArray<TSharedPtr<ICommand>> UndoStack;
 	TArray<TSharedPtr<ICommand>> RedoStack;
