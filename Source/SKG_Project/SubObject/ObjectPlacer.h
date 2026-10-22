@@ -99,6 +99,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Object Placement|Snap")
     void SetMainWidgetRef(UUserWidget* NewWidget) { MainWidgetRef = NewWidget; }
 
+    UFUNCTION(BlueprintCallable, Category = "Object Placement|UI")
+    void AddClickBlockWidget(class UWidget* Widget);
+
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
     void DeleteSelectedObjects();
 
@@ -276,4 +279,10 @@ protected:
     void OnDeleteObjectKeyPressed();
 
     void ClearGizmoSelection();
+
+    UPROPERTY()
+    TArray<class UWidget*> ClickBlockWidgets;
+
+    // ÉJÅ[É\ÉãÇ™ìoò^çœÇ›UIÇÃè„Ç…Ç†ÇÈÇ©
+    bool IsMouseOverClickBlockWidget() const;
 };

@@ -1,9 +1,8 @@
 ﻿#include "ObjectPlacer.h"
 #include "TransformerPawn.h"
 #include "Engine/Engine.h"
-
-/*====================追加==================*/
 #include "RedoUndoButton.h"
+#include "Components/Widget.h"
 
 FVector AObjectPlacer::GetSelectedObjectLocation() const
 {
@@ -351,6 +350,13 @@ void AObjectPlacer::Tick(float DeltaTime)
 
 void AObjectPlacer::OnLeftClick()
 {
+    // 撮影UIなどの上をクリックしたときは、配置・選択・ギズモ操作を全部止める
+    if (IsMouseOverClickBlockWidget())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Click] Blocked by UI"));
+        return;
+    }
+
     FHitResult Hit;
     FCollisionQueryParams Params;
 
@@ -844,6 +850,14 @@ void AObjectPlacer::OnCycleAlignSnapKeyPressed()
     CycleAlignSnapMode();
 }
 
+void AObjectPlacer::AddClickBlockWidget(UWidget* Widget)
+{
+    if (IsValid(Widget))
+    {
+        ClickBlockWidgets.AddUnique(Widget);
+    }
+}
+
 void AObjectPlacer::DeleteSelectedObjects()
 {
     if (SelectedObjects.Num() == 0)
@@ -1065,4 +1079,16 @@ void AObjectPlacer::ClearGizmoSelection()
         TransformerPawn->DeselectAll();
     }
     GizmoActiveObjects.Empty();
+}
+
+bool AObjectPlacer::IsMouseOverClickBlockWidget() const
+{
+    for (UWidget* W : ClickBlockWidgets)
+    {
+        if (IsValid(W) && W->IsHovered())
+        {
+            return true;
+        }
+    }
+    return false;
 }
