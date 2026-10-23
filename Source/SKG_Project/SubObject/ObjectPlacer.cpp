@@ -855,6 +855,12 @@ void AObjectPlacer::AddClickBlockWidget(UWidget* Widget)
     if (IsValid(Widget))
     {
         ClickBlockWidgets.AddUnique(Widget);
+        UE_LOG(LogTemp, Warning, TEXT("[ClickBlock] Registered %s (Count=%d)"),
+            *Widget->GetName(), ClickBlockWidgets.Num());
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ClickBlock] Register called with invalid widget"));
     }
 }
 
@@ -1083,9 +1089,20 @@ void AObjectPlacer::ClearGizmoSelection()
 
 bool AObjectPlacer::IsMouseOverClickBlockWidget() const
 {
+    UE_LOG(LogTemp, Warning, TEXT("[ClickBlock] Check. Registered=%d"), ClickBlockWidgets.Num());
+
     for (UWidget* W : ClickBlockWidgets)
     {
-        if (IsValid(W) && W->IsHovered())
+        if (!IsValid(W))
+        {
+            continue;
+        }
+
+        const bool bHovered = W->IsHovered();
+        UE_LOG(LogTemp, Warning, TEXT("[ClickBlock] %s Hovered=%d Visibility=%d"),
+            *W->GetName(), bHovered ? 1 : 0, (int32)W->GetVisibility());
+
+        if (bHovered)
         {
             return true;
         }
