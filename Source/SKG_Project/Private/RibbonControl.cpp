@@ -15,6 +15,7 @@
 #include "SceneSaveGame.h"
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
+#include "SKG_Project/SubObject/ObjectPlacer.h" 
 
 void URibbonControl::ImportPointCloud()
 {
@@ -122,6 +123,17 @@ void URibbonControl::LoadSceneFile()
         return;
     }
 
+    // 古いActorを消す「前」に、選択・ギズモ・ロック・Undo履歴をクリアする
+    AObjectPlacer* Placer = Cast<AObjectPlacer>(UGameplayStatics::GetPlayerController(World, 0));
+    if (Placer)
+    {
+        Placer->ResetForSceneLoad();
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: AObjectPlacer not found"));
+    }
+
     // 1) Remove the objects that are placed now (skip hidden ones)
     TArray<AActor*> ToDestroy;
     for (const TSubclassOf<AActor>& BaseClass : PlaceableBaseClasses)
@@ -164,6 +176,11 @@ void URibbonControl::LoadSceneFile()
         if (NewActor)
         {
             ++SpawnedCount;
+
+            if (Placer)
+            {
+                Placer->RegisterLoadedActor(NewActor);
+            }
         }
     }
 
