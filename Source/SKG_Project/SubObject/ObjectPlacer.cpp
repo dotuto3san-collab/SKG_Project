@@ -3,6 +3,7 @@
 #include "Engine/Engine.h"
 #include "RedoUndoButton.h"
 #include "Components/Widget.h"
+#include "Components/MeshComponent.h"
 
 FVector AObjectPlacer::GetSelectedObjectLocation() const
 {
@@ -274,6 +275,15 @@ void AObjectPlacer::SetAlignSnapMode(EAlignSnapMode NewMode)
     }
 }
 
+FText AObjectPlacer::GetHumanModelName(int32 Index) const
+{
+    if (HumanAssets.IsValidIndex(Index) && HumanAssets[Index])
+    {
+        return FText::FromString(HumanAssets[Index]->GetName());
+    }
+    return FText::GetEmpty();
+}
+
 void AObjectPlacer::BeginPlay()
 {
     Super::BeginPlay();
@@ -327,6 +337,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("DeleteObject", IE_Pressed, this, &AObjectPlacer::OnDeleteObjectKeyPressed);
     InputComponent->BindAction("ToggleHumanWander", IE_Pressed, this, &AObjectPlacer::OnToggleHumanWanderKeyPressed);
     InputComponent->BindAction("ToggleHumanDangerTimer", IE_Pressed, this, &AObjectPlacer::OnToggleHumanDangerTimerKeyPressed);
+    InputComponent->BindAction("CycleHumanModel", IE_Pressed, this, &AObjectPlacer::OnCycleHumanModelKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -571,8 +582,17 @@ void AObjectPlacer::SetObjectColor(AActor* TargetActor, FLinearColor Color)
 {
     if (!TargetActor) return;
 
-    if (UStaticMeshComponent* Mesh = TargetActor->FindComponentByClass<UStaticMeshComponent>())
+    TArray<UStaticMeshComponent*> Meshes;
+    TargetActor->GetComponents<UStaticMeshComponent>(Meshes);
+
+    for (UStaticMeshComponent* Mesh : Meshes)
     {
+        // 中身が空のメッシュ(子BPで見た目を差し替えた元のメッシュなど)は飛ばす
+        if (!Mesh->GetStaticMesh())
+        {
+            continue;
+        }
+
         UMaterialInstanceDynamic* DynMat = Mesh->CreateAndSetMaterialInstanceDynamic(0);
         if (DynMat)
         {
@@ -585,7 +605,11 @@ void AObjectPlacer::SetObjectHighlight(AActor* TargetActor, bool bHighlighted)
 {
     if (!TargetActor) return;
 
-    if (UStaticMeshComponent* Mesh = TargetActor->FindComponentByClass<UStaticMeshComponent>())
+    // スタティック/スケルタルを問わず、全てのメッシュに適用する
+    TArray<UMeshComponent*> Meshes;
+    TargetActor->GetComponents<UMeshComponent>(Meshes);
+
+    for (UMeshComponent* Mesh : Meshes)
     {
         Mesh->SetOverlayMaterial(bHighlighted ? HighlightMaterial : nullptr);
     }
@@ -1025,6 +1049,38 @@ void AObjectPlacer::DebugSimulateReload()
 
 }
 
+void AObjectPlacer::SelectHumanModel(int32 Index)
+{
+    if (!HumanAssets.IsValidIndex(Index) || !HumanAssets[Index])
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[HumanModel] Invalid index or null asset. Index=%d Num=%d"),
+            Index, HumanAssets.Num());
+        return;
+    }
+
+    SelectedHumanModelIndex = Index;
+    SetSelectedObject(HumanAssets[Index]);
+
+    UE_LOG(LogTemp, Warning, TEXT("[HumanModel] Selected %s (Class=%s)"),
+        *HumanAssets[Index]->GetName(),
+        HumanAssets[Index]->ActorClass ? *HumanAssets[Index]->ActorClass->GetName() : TEXT("null"));
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
+            FString::Printf(TEXT("Human Model: %s"), *HumanAssets[Index]->GetName()));
+    }
+}
+
+void AObjectPlacer::CycleHumanModel()
+{
+    if (HumanAssets.Num() == 0)
+    {
+        return;
+    }
+    SelectHumanModel((SelectedHumanModelIndex + 1) % HumanAssets.Num());
+}
+
 void AObjectPlacer::OnToggleHumanWanderKeyPressed()
 {
     bHumansWandering = !bHumansWandering;
@@ -1108,4 +1164,10 @@ bool AObjectPlacer::IsMouseOverClickBlockWidget() const
         }
     }
     return false;
+}
+
+void AObjectPlacer::OnCycleHumanModelKeyPressed()
+{
+    UE_LOG(LogTemp, Warning, TEXT("[HumanModel] Key pressed. HumanAssets=%d"), HumanAssets.Num());
+    CycleHumanModel();
 }

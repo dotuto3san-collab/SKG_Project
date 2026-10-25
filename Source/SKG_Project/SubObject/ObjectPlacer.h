@@ -116,6 +116,21 @@ public:
     UFUNCTION(Exec)
     void DebugSimulateReload();
 
+    UFUNCTION(BlueprintCallable, Category = "Object Placement|Human")
+    void SelectHumanModel(int32 Index);
+
+    UFUNCTION(BlueprintCallable, Category = "Object Placement|Human")
+    void CycleHumanModel();
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement|Human")
+    int32 GetHumanModelCount() const { return HumanAssets.Num(); }
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement|Human")
+    int32 GetSelectedHumanModelIndex() const { return SelectedHumanModelIndex; }
+
+    UFUNCTION(BlueprintPure, Category = "Object Placement|Human")
+    FText GetHumanModelName(int32 Index) const;
+
 protected:
     virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;
@@ -285,4 +300,14 @@ protected:
 
     // カーソルが登録済みUIの上にあるか
     bool IsMouseOverClickBlockWidget() const;
+
+    // 置ける人モデルの一覧。BP_ObjectPlacerのクラスデフォルトで設定する
+    UPROPERTY(EditDefaultsOnly, Category = "Human")
+    TArray<UPlaceableObjectAsset*> HumanAssets;
+
+    UPROPERTY()
+    int32 SelectedHumanModelIndex = 0;
+
+    UFUNCTION()
+    void OnCycleHumanModelKeyPressed();
 };
