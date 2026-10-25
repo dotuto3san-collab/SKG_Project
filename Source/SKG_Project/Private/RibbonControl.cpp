@@ -15,6 +15,8 @@
 #include "SceneSaveGame.h"
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "SKG_Project/SubObject/ObjectPlacer.h" 
 
 void URibbonControl::ImportPointCloud()
@@ -109,21 +111,48 @@ void URibbonControl::LoadSceneFile()
         UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: PlaceableBaseClasses is not set"));
         return;
     }
-    if (!UGameplayStatics::DoesSaveGameExist(TEXT("Scene01"), 0))
+
+    // Ask which file to open
+    IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
+    if (!DesktopPlatform)
     {
-        UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: save data not found"));
+        return;
+    }
+
+    TArray<FString> OutFiles;
+    const bool bOpened = DesktopPlatform->OpenFileDialog(
+        nullptr,
+        TEXT("Open Scene"),
+        TEXT(""),
+        TEXT(""),
+        TEXT("Scene Files (*.scene)|*.scene"),
+        EFileDialogFlags::None,
+        OutFiles
+    );
+
+    if (!bOpened || OutFiles.Num() == 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: canceled"));
+        return;
+    }
+
+    // Read the file, then turn the bytes back into save data
+    TArray<uint8> Bytes;
+    if (!FFileHelper::LoadFileToArray(Bytes, *OutFiles[0]))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: failed to read file: %s"), *OutFiles[0]);
         return;
     }
 
     USceneSaveGame* LoadData = Cast<USceneSaveGame>(
-        UGameplayStatics::LoadGameFromSlot(TEXT("Scene01"), 0));
+        UGameplayStatics::LoadGameFromMemory(Bytes));
     if (!LoadData)
     {
-        UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: failed to load save data"));
+        UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: file is not a valid scene file: %s"), *OutFiles[0]);
         return;
     }
 
-    // 古いActorを消す「前」に、選択・ギズモ・ロック・Undo履歴をクリアする
+    // Before removing the old actors, clear selection, gizmo, lock and undo history
     AObjectPlacer* Placer = Cast<AObjectPlacer>(UGameplayStatics::GetPlayerController(World, 0));
     if (Placer)
     {
@@ -184,8 +213,8 @@ void URibbonControl::LoadSceneFile()
         }
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: destroyed=%d spawned=%d / %d"),
-        ToDestroy.Num(), SpawnedCount, LoadData->Objects.Num());
+    UE_LOG(LogTemp, Warning, TEXT("LoadSceneFile: destroyed=%d spawned=%d / %d file=%s"),
+        ToDestroy.Num(), SpawnedCount, LoadData->Objects.Num(), *OutFiles[0]);
 }
 
 void URibbonControl::SaveSceneFile()
@@ -195,6 +224,36 @@ void URibbonControl::SaveSceneFile()
     {
         UE_LOG(LogTemp, Warning, TEXT("SaveSceneFile: World or PlaceableBaseClasses is not set"));
         return;
+    }
+
+    // Ask where to save
+    IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
+    if (!DesktopPlatform)
+    {
+        return;
+    }
+
+    TArray<FString> OutFiles;
+    const bool bChosen = DesktopPlatform->SaveFileDialog(
+        nullptr,
+        TEXT("Save Scene"),
+        TEXT(""),
+        TEXT("Scene01.scene"),
+        TEXT("Scene Files (*.scene)|*.scene"),
+        EFileDialogFlags::None,
+        OutFiles
+    );
+
+    if (!bChosen || OutFiles.Num() == 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SaveSceneFile: canceled"));
+        return;
+    }
+
+    FString FilePath = OutFiles[0];
+    if (FPaths::GetExtension(FilePath).IsEmpty())
+    {
+        FilePath += TEXT(".scene");
     }
 
     USceneSaveGame* SaveData = Cast<USceneSaveGame>(
@@ -232,9 +291,17 @@ void URibbonControl::SaveSceneFile()
         }
     }
 
-    const bool bSaved = UGameplayStatics::SaveGameToSlot(SaveData, TEXT("Scene01"), 0);
-    UE_LOG(LogTemp, Warning, TEXT("SaveSceneFile: objects=%d saved=%d"),
-        SaveData->Objects.Num(), bSaved ? 1 : 0);
+    // Turn the save data into bytes, then write them to the file
+    TArray<uint8> Bytes;
+    if (!UGameplayStatics::SaveGameToMemory(SaveData, Bytes))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SaveSceneFile: failed to make save data"));
+        return;
+    }
+
+    const bool bSaved = FFileHelper::SaveArrayToFile(Bytes, *FilePath);
+    UE_LOG(LogTemp, Warning, TEXT("SaveSceneFile: objects=%d saved=%d file=%s"),
+        SaveData->Objects.Num(), bSaved ? 1 : 0, *FilePath);
 }
 
 void URibbonControl::Recents()
