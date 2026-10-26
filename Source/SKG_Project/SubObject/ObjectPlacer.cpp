@@ -338,6 +338,10 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("ToggleHumanWander", IE_Pressed, this, &AObjectPlacer::OnToggleHumanWanderKeyPressed);
     InputComponent->BindAction("ToggleHumanDangerTimer", IE_Pressed, this, &AObjectPlacer::OnToggleHumanDangerTimerKeyPressed);
     InputComponent->BindAction("CycleHumanModel", IE_Pressed, this, &AObjectPlacer::OnCycleHumanModelKeyPressed);
+
+    // Ctrl+Z = 巻き戻し, Ctrl+Y = やり直し
+    InputComponent->BindKey(FInputChord(EKeys::Z, false, true, false, false), IE_Pressed, this, &AObjectPlacer::OnUndoKeyPressed);
+    InputComponent->BindKey(FInputChord(EKeys::Y, false, true, false, false), IE_Pressed, this, &AObjectPlacer::OnRedoKeyPressed);
 }
 
 void AObjectPlacer::Tick(float DeltaTime)
@@ -425,6 +429,8 @@ void AObjectPlacer::OnLeftClick()
             if (SelectedObject)
             {
                 DragStartLocation = SelectedObject->GetActorLocation();
+                // ギズモ操作(拡大縮小・回転)の開始時の状態も覚える(これが無いとUndoが古い状態まで戻ってしまう)
+                DragStartTransform = SelectedObject->GetActorTransform();
                 bDragTracking = true;
             }
 
@@ -1170,4 +1176,73 @@ void AObjectPlacer::OnCycleHumanModelKeyPressed()
 {
     UE_LOG(LogTemp, Warning, TEXT("[HumanModel] Key pressed. HumanAssets=%d"), HumanAssets.Num());
     CycleHumanModel();
+}
+
+URedoUndoButton* AObjectPlacer::GetUndoComponent() const
+{
+    URedoUndoButton* UndoComp = nullptr;
+    if (APawn* MyPawn = GetPawn())
+    {
+        UndoComp = MyPawn->FindComponentByClass<URedoUndoButton>();
+    }
+    if (!UndoComp)
+    {
+        UndoComp = FindComponentByClass<URedoUndoButton>();
+    }
+    return UndoComp;
+}
+
+void AObjectPlacer::ClearSelectionForUndoRedo()
+{
+    for (AActor* Obj : SelectedObjects)
+    {
+        if (IsValid(Obj))
+        {
+            SetObjectHighlight(Obj, false);
+        }
+    }
+
+    ClearGizmoSelection();
+    SelectedObjects.Empty();
+    SelectedObject = nullptr;
+
+    UpdateHUDText();
+}
+
+void AObjectPlacer::OnUndoKeyPressed()
+{
+    // マウスでドラッグしている間は巻き戻さない
+    if (bIsLeftMouseDown)
+    {
+        return;
+    }
+
+    URedoUndoButton* UndoComp = GetUndoComponent();
+    if (!UndoComp)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Shortcut] Undo: RedoUndoButton component not found"));
+        return;
+    }
+
+    // 先に選択を解除する(ギズモが、これから変わるActorを指したままにならないように)
+    ClearSelectionForUndoRedo();
+    UndoComp->PerformUndo();
+}
+
+void AObjectPlacer::OnRedoKeyPressed()
+{
+    if (bIsLeftMouseDown)
+    {
+        return;
+    }
+
+    URedoUndoButton* UndoComp = GetUndoComponent();
+    if (!UndoComp)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Shortcut] Redo: RedoUndoButton component not found"));
+        return;
+    }
+
+    ClearSelectionForUndoRedo();
+    UndoComp->PerformRedo();
 }

@@ -19,6 +19,27 @@ enum class EAlignSnapMode : uint8
     AxisY   UMETA(DisplayName = "Y")       // Y座標を基準オブジェクトに揃える
 };
 
+// コピーしたオブジェクト1つぶんの情報
+USTRUCT()
+struct FCopiedObjectData
+{
+    GENERATED_BODY()
+
+    // 生成するクラス
+    UPROPERTY()
+    TSubclassOf<AActor> ObjectClass;
+
+    UPROPERTY()
+    FRotator Rotation = FRotator::ZeroRotator;
+
+    UPROPERTY()
+    FVector Scale = FVector::OneVector;
+
+    // コピーしたグループの基準点(XYは中心、Zは一番低いオブジェクト)からの距離
+    UPROPERTY()
+    FVector Offset = FVector::ZeroVector;
+};
+
 /**
  * 
  */
@@ -310,4 +331,15 @@ protected:
 
     UFUNCTION()
     void OnCycleHumanModelKeyPressed();
+
+
+    // Undo/Redoキー(ショトカキー)
+    void OnUndoKeyPressed();
+    void OnRedoKeyPressed();
+
+    // Undoコンポーネントを探す(ポーン上、またはこのコントローラ上)
+    class URedoUndoButton* GetUndoComponent() const;
+
+    // 選択とギズモを解除する(Undo / Redo の前に使う)
+    void ClearSelectionForUndoRedo();
 };
