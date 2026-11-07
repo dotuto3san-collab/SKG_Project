@@ -1,4 +1,6 @@
 ﻿#include "PlaceableHumanActor.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Animation/AnimationAsset.h"
 
 APlaceableHumanActor::APlaceableHumanActor()
 {
@@ -88,6 +90,9 @@ void APlaceableHumanActor::SetWandering(bool bEnable)
     {
         PickNewWanderTarget();
     }
+
+    // 歩いている間だけアニメーションを再生する
+    SetWalkAnimationPlaying(bIsWandering);
 }
 
 void APlaceableHumanActor::SetDangerTimerEnabled(bool bEnable)
@@ -122,4 +127,29 @@ void APlaceableHumanActor::PickNewWanderTarget()
     const float OffsetY = RandomRadius * FMath::Sin(FMath::DegreesToRadians(RandomAngle));
 
     CurrentTargetLocation = HomeLocation + FVector(OffsetX, OffsetY, 0.f);
+}
+
+void APlaceableHumanActor::SetWalkAnimationPlaying(bool bPlay)
+{
+    USkeletalMeshComponent* SkelMesh = FindComponentByClass<USkeletalMeshComponent>();
+
+    UE_LOG(LogTemp, Warning, TEXT("[HumanAnim] %s Play=%d SkelMesh=%s Anim=%s"),
+        *GetName(), bPlay ? 1 : 0,
+        SkelMesh ? *SkelMesh->GetName() : TEXT("null"),
+        WalkAnimation ? *WalkAnimation->GetName() : TEXT("null"));
+
+    if (!SkelMesh || !WalkAnimation)
+    {
+        return;
+    }
+
+    if (bPlay)
+    {
+        SkelMesh->PlayAnimation(WalkAnimation, true); // ループ再生
+    }
+    else
+    {
+        SkelMesh->Stop();
+        SkelMesh->SetPosition(0.f, false); // 最初のポーズに戻す
+    }
 }

@@ -288,7 +288,12 @@ void AObjectPlacer::BeginPlay()
 {
     Super::BeginPlay();
     bShowMouseCursor = true;
-    SetInputMode(FInputModeGameAndUI());
+    // SetInputMode(FInputModeGameAndUI());
+
+    FInputModeGameAndUI InputMode;
+    InputMode.SetHideCursorDuringCapture(false);
+    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(InputMode);
 
     // カメラの向きをControlRotationに同期させる
     if (APawn* MyPawn = GetPawn())
@@ -478,7 +483,19 @@ void AObjectPlacer::OnLeftClick()
             );
         }
 
-        AActor* NewObject = GetWorld()->SpawnActor<AActor>(SelectedObjectClass, PlacementLocation, FRotator::ZeroRotator);
+        //AActor* NewObject = GetWorld()->SpawnActor<AActor>(SelectedObjectClass, PlacementLocation, FRotator::ZeroRotator);
+        
+        // ★変更: 人のときだけ、置いた直後の向きを SpawnYaw にする
+        FRotator SpawnRotation = FRotator::ZeroRotator;
+        if (SelectedObjectClass)
+        {
+            if (const APlaceableHumanActor* HumanDefault = Cast<APlaceableHumanActor>(SelectedObjectClass->GetDefaultObject()))
+            {
+                SpawnRotation.Yaw = HumanDefault->SpawnYaw;
+            }
+        }
+
+        AActor* NewObject = GetWorld()->SpawnActor<AActor>(SelectedObjectClass, PlacementLocation, SpawnRotation);
 
         if (NewObject)
         {

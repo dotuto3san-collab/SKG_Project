@@ -5,6 +5,8 @@
 #include "PlaceableObjectAsset.h"
 #include "PlaceableHumanActor.generated.h"
 
+class UAnimationAsset;
+
 UCLASS()
 class SKG_PROJECT_API APlaceableHumanActor : public AActor
 {
@@ -33,10 +35,18 @@ public:
     UFUNCTION(BlueprintPure, Category = "Danger Timer")
     bool IsDangerTimerEnabled() const { return bDangerTimerEnabled; }
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wander")
+    UAnimationAsset* WalkAnimation = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wander")
+    float SpawnYaw = 90.f;
+
 protected:
     virtual void BeginPlay() override;
 
     void PickNewWanderTarget();
+
+    void SetWalkAnimationPlaying(bool bPlay);
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Human Status")
     EHumanStatus HumanStatus = EHumanStatus::Normal;
