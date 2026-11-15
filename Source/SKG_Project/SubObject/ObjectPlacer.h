@@ -164,6 +164,12 @@ public:
     UFUNCTION(BlueprintPure, Category = "Simulation")
     bool IsSimulating() const { return bSimulating; }
 
+    UFUNCTION(BlueprintImplementableEvent, Category = "Human Program")
+    void OnSelectionChangedEvent();
+
+    UFUNCTION(BlueprintPure, Category = "Human Program")
+    APlaceableHumanActor* GetSelectedHuman() const;
+
 protected:
     virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;

@@ -336,6 +336,11 @@ void AObjectPlacer::OnToggleSimulationKeyPressed()
     OnToggleSimulationRequested();
 }
 
+APlaceableHumanActor* AObjectPlacer::GetSelectedHuman() const
+{
+    return Cast<APlaceableHumanActor>(SelectedObject);
+}
+
 void AObjectPlacer::BeginPlay()
 {
     Super::BeginPlay();
@@ -479,6 +484,8 @@ void AObjectPlacer::OnLeftClick()
 
             RefreshGizmoSelectionForLock();
 
+            OnSelectionChangedEvent();
+
             return;
         }
 
@@ -524,6 +531,7 @@ void AObjectPlacer::OnLeftClick()
             SelectedObjects.Empty();
             SelectedObject = nullptr;
             ClearGizmoSelection();
+            OnSelectionChangedEvent();
             return;
         }
 
@@ -1027,6 +1035,7 @@ void AObjectPlacer::DeleteSelectedObjects()
     SelectedObject = nullptr;
 
     UpdateHUDText();
+    OnSelectionChangedEvent();
 }
 
 void AObjectPlacer::ResetForSceneLoad()
@@ -1292,6 +1301,7 @@ void AObjectPlacer::ClearSelectionForUndoRedo()
     SelectedObject = nullptr;
 
     UpdateHUDText();
+    OnSelectionChangedEvent();
 }
 
 void AObjectPlacer::OnUndoKeyPressed()

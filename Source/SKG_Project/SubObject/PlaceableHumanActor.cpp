@@ -22,6 +22,12 @@ void APlaceableHumanActor::Tick(float DeltaTime)
         }
     }
 
+    if (bRunningProgram)
+    {
+        TickProgram(DeltaTime);
+        return;
+    }
+
     // 歩行処理(bIsWanderingがfalseなら、ここから先は実行しない)
     if (!bIsWandering)
     {
@@ -78,6 +84,16 @@ void APlaceableHumanActor::SetHumanStatus(EHumanStatus NewStatus)
 
 void APlaceableHumanActor::SetWandering(bool bEnable)
 {
+    if (bEnable && Commands.Num() > 0 && HumanStatus == EHumanStatus::Normal)
+    {
+        StartProgram();
+        return;
+    }
+    if (!bEnable)
+    {
+        bRunningProgram = false;
+    }
+
     // Danger状態(倒れている)のときは歩かせない
     if (bEnable && HumanStatus != EHumanStatus::Normal)
     {
@@ -162,6 +178,12 @@ void APlaceableHumanActor::SetWalkAnimationPlaying(bool bPlay)
 // 新式(アニメーションをIdleとWalkに切り替える方式)
 void APlaceableHumanActor::SetWalkAnimationPlaying(bool bPlay)
 {
+    // すでに同じ状態なら再生し直さない
+    if (bWalkAnimInitialized && bWalkAnimPlaying == bPlay)
+    {
+        return;
+    }
+
     USkeletalMeshComponent* SkelMesh = FindComponentByClass<USkeletalMeshComponent>();
     if (!SkelMesh)
     {
@@ -174,9 +196,11 @@ void APlaceableHumanActor::SetWalkAnimationPlaying(bool bPlay)
         return;
     }
 
-    // AnimBPモードの場合でも単体アニメを再生できるように切り替える
     SkelMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
     SkelMesh->PlayAnimation(NewAnim, true);
+
+    bWalkAnimPlaying = bPlay;
+    bWalkAnimInitialized = true;
 }
 
 void APlaceableHumanActor::SaveEditorTransform()
@@ -196,4 +220,92 @@ void APlaceableHumanActor::RestoreEditorTransform()
     OriginalRotation = EditorTransform.Rotator();
     HomeLocation = EditorTransform.GetLocation();
     bHasEditorTransform = false;
+}
+
+void APlaceableHumanActor::StartProgram()
+{
+    CommandIndex = 0;
+    CommandProgress = 0.f;
+    bRunningProgram = Commands.Num() > 0;
+    SetWalkAnimationPlaying(false);
+}
+
+void APlaceableHumanActor::AddCommand(EHumanCommandType Type, float Value)
+{
+    FHumanCommand Cmd;
+    Cmd.Type = Type;
+    Cmd.Value = Value;
+    Commands.Add(Cmd);
+}
+
+void APlaceableHumanActor::SetCommandValue(int32 Index, float Value)
+{
+    if (Commands.IsValidIndex(Index))
+    {
+        Commands[Index].Value = Value;
+    }
+}
+
+void APlaceableHumanActor::RemoveCommand(int32 Index)
+{
+    if (Commands.IsValidIndex(Index))
+    {
+        Commands.RemoveAt(Index);
+    }
+}
+
+void APlaceableHumanActor::ClearCommands()
+{
+    Commands.Empty();
+}
+
+bool APlaceableHumanActor::TickProgram(float DeltaTime)
+{
+    if (!Commands.IsValidIndex(CommandIndex))
+    {
+        // 最後まで到達 → 自動で立ち止まる
+        bRunningProgram = false;
+        SetWalkAnimationPlaying(false);
+        return true;
+    }
+
+    const FHumanCommand& Cmd = Commands[CommandIndex];
+    bool bDone = false;
+
+    switch (Cmd.Type)
+    {
+    case EHumanCommandType::Walk:
+    {
+        const float Total = Cmd.Value * StepLength;
+        const float Move = FMath::Min(WalkSpeed * DeltaTime, Total - CommandProgress);
+        SetActorLocation(GetActorLocation() + GetActorForwardVector() * Move);
+        CommandProgress += Move;
+        SetWalkAnimationPlaying(true);
+        bDone = CommandProgress >= Total - KINDA_SMALL_NUMBER;
+        break;
+    }
+    case EHumanCommandType::Wait:
+        SetWalkAnimationPlaying(false);
+        CommandProgress += DeltaTime;
+        bDone = CommandProgress >= Cmd.Value;
+        break;
+    case EHumanCommandType::Turn:
+    {
+        const float TurnSpeed = 90.f; // 度/秒
+        const float Total = FMath::Abs(Cmd.Value);
+        const float Step = FMath::Min(TurnSpeed * DeltaTime, Total - CommandProgress);
+        AddActorWorldRotation(FRotator(0.f, FMath::Sign(Cmd.Value) * Step, 0.f));
+        CommandProgress += Step;
+        SetWalkAnimationPlaying(false);
+        bDone = CommandProgress >= Total - KINDA_SMALL_NUMBER;
+        break;
+    }
+    }
+
+    if (bDone)
+    {
+        ++CommandIndex;
+        CommandProgress = 0.f;
+    }
+    return false;
 }

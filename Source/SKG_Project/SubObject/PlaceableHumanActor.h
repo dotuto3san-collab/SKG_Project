@@ -5,6 +5,28 @@
 #include "PlaceableObjectAsset.h"
 #include "PlaceableHumanActor.generated.h"
 
+UENUM(BlueprintType)
+enum class EHumanCommandType : uint8
+{
+    Walk UMETA(DisplayName = "歩く"),
+    Wait UMETA(DisplayName = "止まる"),
+    Turn UMETA(DisplayName = "回る")
+};
+
+USTRUCT(BlueprintType)
+struct FHumanCommand
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    EHumanCommandType Type = EHumanCommandType::Walk;
+
+    // Walk=歩数 / Wait=秒 / Turn=度(マイナスで逆回り)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float Value = 1.f;
+};
+
+
 class UAnimationAsset;
 
 UCLASS()
@@ -50,6 +72,28 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Wander")
     void RestoreEditorTransform();
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Program")
+    TArray<FHumanCommand> Commands;
+
+    // 1歩の長さ(cm)
+    UPROPERTY(EditAnywhere, Category = "Program")
+    float StepLength = 50.f;
+
+    UFUNCTION(BlueprintCallable, Category = "Program")
+    void StartProgram();
+
+    UFUNCTION(BlueprintCallable, Category = "Program")
+    void AddCommand(EHumanCommandType Type, float Value);
+
+    UFUNCTION(BlueprintCallable, Category = "Program")
+    void SetCommandValue(int32 Index, float Value);
+
+    UFUNCTION(BlueprintCallable, Category = "Program")
+    void RemoveCommand(int32 Index);
+
+    UFUNCTION(BlueprintCallable, Category = "Program")
+    void ClearCommands();
 
 protected:
     virtual void BeginPlay() override;
@@ -105,4 +149,13 @@ protected:
 
     UPROPERTY()
     bool bHasEditorTransform = false;
+
+    bool bRunningProgram = false;
+    int32 CommandIndex = 0;
+    float CommandProgress = 0.f;   // 進んだ距離 / 経過秒 / 回った角度
+
+    bool TickProgram(float DeltaTime);
+
+    bool bWalkAnimPlaying = false;
+    bool bWalkAnimInitialized = false;
 };
