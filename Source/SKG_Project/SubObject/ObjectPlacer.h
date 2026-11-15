@@ -152,6 +152,18 @@ public:
     UFUNCTION(BlueprintPure, Category = "Object Placement|Human")
     FText GetHumanModelName(int32 Index) const;
 
+    UFUNCTION(BlueprintCallable, Category = "Simulation")
+    void StartSimulation();
+
+    UFUNCTION(BlueprintCallable, Category = "Simulation")
+    void StopSimulation();
+
+    UFUNCTION(BlueprintImplementableEvent, Category = "Simulation")
+    void OnToggleSimulationRequested();
+
+    UFUNCTION(BlueprintPure, Category = "Simulation")
+    bool IsSimulating() const { return bSimulating; }
+
 protected:
     virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;
@@ -332,6 +344,11 @@ protected:
     UFUNCTION()
     void OnCycleHumanModelKeyPressed();
 
+    UPROPERTY()
+    bool bSimulating = false;
+
+    UFUNCTION()
+    void OnToggleSimulationKeyPressed();
 
     // Undo/Redoキー(ショトカキー)
     void OnUndoKeyPressed();

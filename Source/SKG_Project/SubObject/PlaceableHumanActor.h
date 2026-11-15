@@ -38,8 +38,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wander")
     UAnimationAsset* WalkAnimation = nullptr;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wander")
+    UAnimationAsset* IdleAnimation = nullptr;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wander")
     float SpawnYaw = 90.f;
+
+    // 実行前の状態を保存／復元する
+    UFUNCTION(BlueprintCallable, Category = "Wander")
+    void SaveEditorTransform();
+
+    UFUNCTION(BlueprintCallable, Category = "Wander")
+    void RestoreEditorTransform();
 
 protected:
     virtual void BeginPlay() override;
@@ -89,4 +99,10 @@ protected:
     // 徘徊の中心地点(配置された場所)
     UPROPERTY()
     FVector HomeLocation = FVector::ZeroVector;
+
+    UPROPERTY()
+    FTransform EditorTransform;
+
+    UPROPERTY()
+    bool bHasEditorTransform = false;
 };

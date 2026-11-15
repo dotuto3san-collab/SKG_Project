@@ -115,6 +115,8 @@ void APlaceableHumanActor::BeginPlay()
 {
     Super::BeginPlay();
     HomeLocation = GetActorLocation();
+    // 人間が配置された直後は歩行アニメーションをfalseにして、停止アニメーションを再生
+    SetWalkAnimationPlaying(false);
 }
 
 void APlaceableHumanActor::PickNewWanderTarget()
@@ -129,6 +131,8 @@ void APlaceableHumanActor::PickNewWanderTarget()
     CurrentTargetLocation = HomeLocation + FVector(OffsetX, OffsetY, 0.f);
 }
 
+// 旧式(歩行アニメーションのみ、アニメーション再生停止のみの方式)
+/*
 void APlaceableHumanActor::SetWalkAnimationPlaying(bool bPlay)
 {
     USkeletalMeshComponent* SkelMesh = FindComponentByClass<USkeletalMeshComponent>();
@@ -152,4 +156,44 @@ void APlaceableHumanActor::SetWalkAnimationPlaying(bool bPlay)
         SkelMesh->Stop();
         SkelMesh->SetPosition(0.f, false); // 最初のポーズに戻す
     }
+}
+*/
+
+// 新式(アニメーションをIdleとWalkに切り替える方式)
+void APlaceableHumanActor::SetWalkAnimationPlaying(bool bPlay)
+{
+    USkeletalMeshComponent* SkelMesh = FindComponentByClass<USkeletalMeshComponent>();
+    if (!SkelMesh)
+    {
+        return;
+    }
+
+    UAnimationAsset* NewAnim = bPlay ? WalkAnimation : IdleAnimation;
+    if (!NewAnim)
+    {
+        return;
+    }
+
+    // AnimBPモードの場合でも単体アニメを再生できるように切り替える
+    SkelMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+    SkelMesh->PlayAnimation(NewAnim, true);
+}
+
+void APlaceableHumanActor::SaveEditorTransform()
+{
+    EditorTransform = GetActorTransform();
+    bHasEditorTransform = true;
+}
+
+void APlaceableHumanActor::RestoreEditorTransform()
+{
+    if (!bHasEditorTransform) return;
+
+    SetWandering(false);
+    SetActorTransform(EditorTransform);
+
+    HumanStatus = EHumanStatus::Normal;
+    OriginalRotation = EditorTransform.Rotator();
+    HomeLocation = EditorTransform.GetLocation();
+    bHasEditorTransform = false;
 }

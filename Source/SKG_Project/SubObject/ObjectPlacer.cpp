@@ -284,6 +284,58 @@ FText AObjectPlacer::GetHumanModelName(int32 Index) const
     return FText::GetEmpty();
 }
 
+void AObjectPlacer::StartSimulation()
+{
+    UE_LOG(LogTemp, Warning, TEXT("[Sim] StartSimulation called. already=%d"), bSimulating ? 1 : 0);
+    if (bSimulating) return;
+
+    // 選択・ギズモを解除してから開始（実行中に残さない）
+    ClearSelectionForUndoRedo();
+    bIsLeftMouseDown = false;
+    bDragTracking = false;
+
+    bSimulating = true;
+    bHumansWandering = true;
+
+    for (AActor* Obj : PlacedObjects)
+    {
+        if (!IsValid(Obj) || Obj->IsHidden()) continue;
+
+        if (APlaceableHumanActor* Human = Cast<APlaceableHumanActor>(Obj))
+        {
+            Human->SaveEditorTransform();   // 実行前の位置を記録
+            Human->SetWandering(true);
+        }
+    }
+}
+
+void AObjectPlacer::StopSimulation()
+{
+    UE_LOG(LogTemp, Warning, TEXT("[Sim] StopSimulation called. simulating=%d"), bSimulating ? 1 : 0);
+    if (!bSimulating) return;
+
+    bSimulating = false;
+    bHumansWandering = false;
+    bHumansDangerTimerEnabled = false;
+
+    for (AActor* Obj : PlacedObjects)
+    {
+        if (!IsValid(Obj)) continue;
+
+        if (APlaceableHumanActor* Human = Cast<APlaceableHumanActor>(Obj))
+        {
+            Human->SetDangerTimerEnabled(false);
+            Human->RestoreEditorTransform(); // 元の位置・状態に戻す
+        }
+    }
+}
+
+void AObjectPlacer::OnToggleSimulationKeyPressed()
+{
+    // 実行/停止の切り替えはUI(WBP_Main)側の処理に任せる
+    OnToggleSimulationRequested();
+}
+
 void AObjectPlacer::BeginPlay()
 {
     Super::BeginPlay();
@@ -343,6 +395,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("ToggleHumanWander", IE_Pressed, this, &AObjectPlacer::OnToggleHumanWanderKeyPressed);
     InputComponent->BindAction("ToggleHumanDangerTimer", IE_Pressed, this, &AObjectPlacer::OnToggleHumanDangerTimerKeyPressed);
     InputComponent->BindAction("CycleHumanModel", IE_Pressed, this, &AObjectPlacer::OnCycleHumanModelKeyPressed);
+    InputComponent->BindAction("ToggleSimulation", IE_Pressed, this, &AObjectPlacer::OnToggleSimulationKeyPressed);
 
     // Ctrl+Z = 巻き戻し, Ctrl+Y = やり直し
     InputComponent->BindKey(FInputChord(EKeys::Z, false, true, false, false), IE_Pressed, this, &AObjectPlacer::OnUndoKeyPressed);
@@ -370,6 +423,9 @@ void AObjectPlacer::Tick(float DeltaTime)
 
 void AObjectPlacer::OnLeftClick()
 {
+    // 実行モード中は操作させない
+    if (bSimulating) return;
+
     // 撮影UIなどの上をクリックしたときは、配置・選択・ギズモ操作を全部止める
     if (IsMouseOverClickBlockWidget())
     {
@@ -528,6 +584,9 @@ void AObjectPlacer::OnLeftClick()
 
 void AObjectPlacer::OnLeftClickReleased()
 {
+    // 実行モード中は操作させない
+    if (bSimulating) return;
+
     bIsLeftMouseDown = false;
 
     if (ATransformerPawn* TransformerPawn = Cast<ATransformerPawn>(GetPawn()))
@@ -699,6 +758,9 @@ FText AObjectPlacer::GetCategoryDisplayText(EObjectCategory Category) const
 
 void AObjectPlacer::OnFlipObjectKeyPressed()
 {
+    // 実行モード中は操作させない
+    if (bSimulating) return;
+
     if (!SelectedObject)
     {
         return;
@@ -790,6 +852,9 @@ void AObjectPlacer::OnToggleLockScaleKeyPressed()
 
 void AObjectPlacer::OnReplaceObjectKeyPressed()
 {
+    // 実行モード中は操作させない
+    if (bSimulating) return;
+
     ReplaceSelectedObjects();
 }
 
@@ -1154,6 +1219,9 @@ void AObjectPlacer::OnToggleHumanDangerTimerKeyPressed()
 
 void AObjectPlacer::OnDeleteObjectKeyPressed()
 {
+    // 実行モード中は操作させない
+    if (bSimulating) return;
+
     DeleteSelectedObjects();
 }
 
@@ -1228,6 +1296,9 @@ void AObjectPlacer::ClearSelectionForUndoRedo()
 
 void AObjectPlacer::OnUndoKeyPressed()
 {
+    // 実行モード中は操作させない
+    if (bSimulating) return;
+
     // マウスでドラッグしている間は巻き戻さない
     if (bIsLeftMouseDown)
     {
@@ -1248,6 +1319,9 @@ void AObjectPlacer::OnUndoKeyPressed()
 
 void AObjectPlacer::OnRedoKeyPressed()
 {
+    // 実行モード中は操作させない
+    if (bSimulating) return;
+
     if (bIsLeftMouseDown)
     {
         return;
