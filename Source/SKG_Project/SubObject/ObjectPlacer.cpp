@@ -58,6 +58,32 @@ void AObjectPlacer::ArrangeSelectedObjectsHorizontally()
     }
 }
 
+void AObjectPlacer::ArrangeSelectedObjectsVertically()
+{
+    if (SelectedObjects.Num() < 2)
+    {
+        return;
+    }
+
+    // Y座標が小さい順に並び替え
+    TArray<AActor*> SortedObjects = SelectedObjects;
+    SortedObjects.Sort([](const AActor& A, const AActor& B)
+        {
+            return A.GetActorLocation().Y < B.GetActorLocation().Y;
+        });
+
+    // 一番端(Yが最小)のオブジェクトを基準にする
+    FVector BaseLocation = SortedObjects[0]->GetActorLocation();
+
+    for (int32 i = 0; i < SortedObjects.Num(); i++)
+    {
+        FVector NewLocation = BaseLocation;
+        NewLocation.Y += GridSnapSize * i;
+
+        SortedObjects[i]->SetActorLocation(NewLocation);
+    }
+}
+
 void AObjectPlacer::SetSelectedObjectLocation(FVector NewLocation)
 {
     if (SelectedObject)
@@ -390,6 +416,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("SwitchObject", IE_Pressed, this, &AObjectPlacer::OnSwitchObjectKeyPressed);
     InputComponent->BindAction("FlipObject", IE_Pressed, this, &AObjectPlacer::OnFlipObjectKeyPressed);
     InputComponent->BindAction("ArrangeObjects", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsKeyPressed);
+    InputComponent->BindAction("ArrangeObjectsVertically", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsVerticallyKeyPressed);
     InputComponent->BindAction("ToggleHumanStatus", IE_Pressed, this, &AObjectPlacer::OnToggleHumanStatusKeyPressed);
     InputComponent->BindAction("ReplaceObject", IE_Pressed, this, &AObjectPlacer::OnReplaceObjectKeyPressed);
     InputComponent->BindAction("ToggleLockLocation", IE_Pressed, this, &AObjectPlacer::OnToggleLockLocationKeyPressed);
@@ -782,6 +809,11 @@ void AObjectPlacer::OnFlipObjectKeyPressed()
 void AObjectPlacer::OnArrangeObjectsKeyPressed()
 {
     ArrangeSelectedObjectsHorizontally();
+}
+
+void AObjectPlacer::OnArrangeObjectsVerticallyKeyPressed()
+{
+    ArrangeSelectedObjectsVertically();
 }
 
 void AObjectPlacer::OnToggleHumanStatusKeyPressed()

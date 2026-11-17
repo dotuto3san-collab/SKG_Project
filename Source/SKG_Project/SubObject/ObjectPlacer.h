@@ -65,6 +65,9 @@ public:
     void ArrangeSelectedObjectsHorizontally();
 
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
+    void ArrangeSelectedObjectsVertically();
+
+    UFUNCTION(BlueprintCallable, Category = "Object Placement")
     void SetSelectedObjectLocation(FVector NewLocation);
 
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
@@ -256,6 +259,9 @@ protected:
 
     UFUNCTION()
     void OnArrangeObjectsKeyPressed();
+
+    UFUNCTION()
+    void OnArrangeObjectsVerticallyKeyPressed();
 
     UFUNCTION()
     void OnToggleHumanStatusKeyPressed();
