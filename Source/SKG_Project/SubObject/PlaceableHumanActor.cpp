@@ -22,12 +22,6 @@ void APlaceableHumanActor::Tick(float DeltaTime)
         }
     }
 
-    if (FallPhase != EFallPhase::None)
-    {
-        TickFall(DeltaTime);
-        return;
-    }
-
     if (bRunningProgram)
     {
         TickProgram(DeltaTime);
@@ -65,28 +59,27 @@ void APlaceableHumanActor::SetHumanStatus(EHumanStatus NewStatus)
 {
     if (HumanStatus == NewStatus)
     {
-        return;
+        return; // 既に同じ状態なら何もしない
     }
+
+    // ステータスが切り替わる瞬間、歩行を止める(Tickによる向きの上書きを防ぐため)
+    SetWandering(false);
 
     if (NewStatus == EHumanStatus::Danger)
     {
-        // 転倒前の動作を覚えておく(起き上がり後に再開するため)
-        bResumeProgram = bRunningProgram;
-        bResumeWander = bIsWandering;
-        SetWandering(false);
+        OriginalRotation = GetActorRotation();
 
-        HumanStatus = EHumanStatus::Danger;
-        FallPhase = EFallPhase::Falling;
-        FallTimer = PlayAnimationOnce(FallAnimation);
+        FRotator FallenRotation = OriginalRotation;
+        FallenRotation.Pitch += 90.f; // 前に倒れる
+
+        SetActorRotation(FallenRotation);
     }
-    else // Normalに戻す(外部から呼ばれた場合は転倒を中断)
+    else // Normalに戻す
     {
-        SetWandering(false);
-        FallPhase = EFallPhase::None;
-        HumanStatus = EHumanStatus::Normal;
-        bWalkAnimInitialized = false;
-        SetWalkAnimationPlaying(false);
+        SetActorRotation(OriginalRotation);
     }
+
+    HumanStatus = NewStatus;
 }
 
 void APlaceableHumanActor::SetWandering(bool bEnable)
@@ -220,9 +213,6 @@ void APlaceableHumanActor::RestoreEditorTransform()
 {
     if (!bHasEditorTransform) return;
 
-    FallPhase = EFallPhase::None;
-    bWalkAnimInitialized = false;
-
     SetWandering(false);
     SetActorTransform(EditorTransform);
 
@@ -318,106 +308,4 @@ bool APlaceableHumanActor::TickProgram(float DeltaTime)
         CommandProgress = 0.f;
     }
     return false;
-}
-
-float APlaceableHumanActor::PlayAnimationOnce(UAnimationAsset* Anim)
-{
-    bWalkAnimInitialized = false; // 次のIdle/Walk切替で必ず再生し直す
-
-    USkeletalMeshComponent* SkelMesh = FindComponentByClass<USkeletalMeshComponent>();
-    if (!SkelMesh || !Anim)
-    {
-        return 0.f;
-    }
-
-    SkelMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-    SkelMesh->PlayAnimation(Anim, false); // ループなし
-    return Anim->GetPlayLength();
-}
-
-void APlaceableHumanActor::TickFall(float DeltaTime)
-{
-    FallTimer -= DeltaTime;
-    if (FallTimer > 0.f)
-    {
-        return;
-    }
-
-    switch (FallPhase)
-    {
-    case EFallPhase::Falling:
-        FallPhase = EFallPhase::Down;
-        FallTimer = DownDuration;
-        break;
-
-    case EFallPhase::Down:
-    {
-        USkeletalMeshComponent* Mesh = FindComponentByClass<USkeletalMeshComponent>();
-
-        // "Hips" を含むボーンを探す(見つからなければ HipsBoneName をそのまま使う)
-        FName HipsName = HipsBoneName;
-        if (Mesh)
-        {
-            for (int32 i = 0; i < Mesh->GetNumBones(); ++i)
-            {
-                const FName BoneName = Mesh->GetBoneName(i);
-                if (BoneName.ToString().Contains(TEXT("Hips")))
-                {
-                    HipsName = BoneName;
-                    break;
-                }
-            }
-        }
-        UE_LOG(LogTemp, Warning, TEXT("[Fall] Mesh=%s Bone=%s (設定値=%s)"),
-            Mesh ? *Mesh->GetName() : TEXT("null"), *HipsName.ToString(), *HipsBoneName.ToString());
-
-        // 向きを変える「前」に、転倒終了時の腰のワールド位置を記録
-        const FVector FallHips = Mesh ? Mesh->GetBoneLocation(HipsName, EBoneSpaces::WorldSpace) : FVector::ZeroVector;
-
-        AddActorWorldRotation(FRotator(0.f, GetUpYawOffset, 0.f));
-
-        FallPhase = EFallPhase::GettingUp;
-        FallTimer = PlayAnimationOnce(GetUpAnimation);
-
-        if (Mesh)
-        {
-            // 起き上がりの最初のポーズを即時に評価して、腰の位置を測る
-            Mesh->TickAnimation(0.f, false);
-            Mesh->RefreshBoneTransforms();
-
-            const FVector GetUpHips = Mesh->GetBoneLocation(HipsName, EBoneSpaces::WorldSpace);
-            FVector Delta = FallHips - GetUpHips;
-            Delta.Z = 0.f;
-
-            UE_LOG(LogTemp, Warning, TEXT("[Fall] FallHips=%s GetUpHips=%s Delta=%s"),
-                *FallHips.ToString(), *GetUpHips.ToString(), *Delta.ToString());
-
-            AddActorWorldOffset(Delta);
-        }
-        break;
-    }
-
-    case EFallPhase::GettingUp:
-        FallPhase = EFallPhase::None;
-        HumanStatus = EHumanStatus::Normal;
-        bWalkAnimInitialized = false;
-        SetWalkAnimationPlaying(false);
-        if (bResumeProgram)
-        {
-            bRunningProgram = true; // CommandIndex/CommandProgress はそのまま → 続きから
-        }
-        else if (bResumeWander)
-        {
-            SetWandering(true);
-        }
-        // 追加: 再び Min〜Max 秒のランダム時間で転倒するようにタイマーを再セット
-        if (bRepeatFall)
-        {
-            SetDangerTimerEnabled(true);
-        }
-        break;
-
-    default:
-        break;
-    }
 }

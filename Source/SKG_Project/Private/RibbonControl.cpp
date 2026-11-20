@@ -54,21 +54,7 @@ void URibbonControl::ImportPointCloud()
             }
 
             ALidarPointCloudActor* Actor = World->SpawnActor<ALidarPointCloudActor>();
-            if (!Actor)
-            {
-                UE_LOG(LogTemp, Warning, TEXT("ImportPointCloud: SpawnActor failed"));
-                return;
-            }
             Actor->SetPointCloud(PointCloud);
-
-            if (AObjectPlacer* Placer = Cast<AObjectPlacer>(UGameplayStatics::GetPlayerController(World, 0)))
-            {
-                Placer->RegisterLoadedActor(Actor);
-            }
-            else
-            {
-                UE_LOG(LogTemp, Warning, TEXT("ImportPointCloud: AObjectPlacer not found"));
-            }
 
             UE_LOG(LogTemp, Warning, TEXT("Import started. Waiting for points..."));
 
@@ -97,8 +83,6 @@ void URibbonControl::ImportPointCloud()
                         }
 
                         W->GetTimerManager().ClearTimer(*Handle);
-
-                        PC->BuildCollision();
 
                         FBox Bounds = PC->GetBounds();
                         FVector Size = Bounds.GetSize();
