@@ -60,6 +60,28 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wander")
     UAnimationAsset* WalkAnimation = nullptr;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fall")
+    UAnimationAsset* FallAnimation = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fall")
+    UAnimationAsset* GetUpAnimation = nullptr;
+
+    // 転倒アニメ終了後、倒れたまま待つ秒数
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fall", meta = (ClampMin = "0.0"))
+    float DownDuration = 3.f;
+
+    // 起き上がった後も、再びランダムな時間で転倒を繰り返すか
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fall")
+    bool bRepeatFall = true;
+
+    // 腰ボーン名(Mixamo の場合)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fall")
+    FName HipsBoneName = TEXT("mixamorig1:Hips");
+
+    // 起き上がり開始時にアクターを回す角度(度)。まず 45 で試し、逆にずれるなら -45
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fall")
+    float GetUpYawOffset = -45.f;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wander")
     UAnimationAsset* IdleAnimation = nullptr;
 
@@ -158,4 +180,13 @@ protected:
 
     bool bWalkAnimPlaying = false;
     bool bWalkAnimInitialized = false;
+
+    enum class EFallPhase : uint8 { None, Falling, Down, GettingUp };
+    EFallPhase FallPhase = EFallPhase::None;
+    float FallTimer = 0.f;
+    bool bResumeProgram = false;
+    bool bResumeWander = false;
+
+    void TickFall(float DeltaTime);
+    float PlayAnimationOnce(UAnimationAsset* Anim);
 };

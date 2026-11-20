@@ -322,6 +322,7 @@ void AObjectPlacer::StartSimulation()
 
     bSimulating = true;
     bHumansWandering = true;
+    bHumansDangerTimerEnabled = true;   // 追加
 
     for (AActor* Obj : PlacedObjects)
     {
@@ -331,6 +332,7 @@ void AObjectPlacer::StartSimulation()
         {
             Human->SaveEditorTransform();   // 実行前の位置を記録
             Human->SetWandering(true);
+            Human->SetDangerTimerEnabled(true);   // 追加
         }
     }
 }
