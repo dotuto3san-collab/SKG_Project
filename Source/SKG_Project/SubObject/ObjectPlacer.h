@@ -65,7 +65,9 @@ public:
     void ArrangeSelectedObjectsHorizontally();
 
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
-    void ArrangeSelectedObjectsVertically();
+    void ArrangeSelectedObjectsVertically(bool bPositiveDirection = true);
+
+    void ArrangeAlongAxis(bool bAlongX, bool bPositiveDirection);
 
     UFUNCTION(BlueprintCallable, Category = "Object Placement")
     void SetSelectedObjectLocation(FVector NewLocation);
@@ -262,6 +264,9 @@ protected:
 
     UFUNCTION()
     void OnArrangeObjectsVerticallyKeyPressed();
+
+    UFUNCTION()
+    void OnArrangeObjectsVerticallyReverseKeyPressed();
 
     UFUNCTION()
     void OnToggleHumanStatusKeyPressed();

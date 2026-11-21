@@ -1,6 +1,7 @@
 ﻿#include "ObjectPlacer.h"
 #include "TransformerPawn.h"
 #include "Engine/Engine.h"
+#include "Algo/Reverse.h"
 #include "RedoUndoButton.h"
 #include "Components/Widget.h"
 #include "Components/MeshComponent.h"
@@ -34,53 +35,109 @@ FVector AObjectPlacer::GetSelectedObjectScale() const
 
 void AObjectPlacer::ArrangeSelectedObjectsHorizontally()
 {
-    if (SelectedObjects.Num() < 2)
-    {
-        return;
-    }
-
-    // X座標が小さい順に並び替え
-    TArray<AActor*> SortedObjects = SelectedObjects;
-    SortedObjects.Sort([](const AActor& A, const AActor& B)
-        {
-            return A.GetActorLocation().X < B.GetActorLocation().X;
-        });
-
-    // 一番左のオブジェクトを基準にする
-    FVector BaseLocation = SortedObjects[0]->GetActorLocation();
-
-    for (int32 i = 0; i < SortedObjects.Num(); i++)
-    {
-        FVector NewLocation = BaseLocation;
-        NewLocation.X += GridSnapSize * i;
-
-        SortedObjects[i]->SetActorLocation(NewLocation);
-    }
+    ArrangeAlongAxis(true, true);
 }
 
-void AObjectPlacer::ArrangeSelectedObjectsVertically()
+void AObjectPlacer::ArrangeSelectedObjectsVertically(bool bPositiveDirection)
 {
-    if (SelectedObjects.Num() < 2)
+    ArrangeAlongAxis(false, bPositiveDirection);
+}
+
+void AObjectPlacer::ArrangeAlongAxis(bool bAlongX, bool bPositiveDirection)
+{
+    TArray<AActor*> Sorted;
+    for (AActor* A : SelectedObjects)
+    {
+        if (IsValid(A))
+        {
+            Sorted.Add(A);
+        }
+    }
+
+    const int32 Num = Sorted.Num();
+    if (Num < 2)
     {
         return;
     }
 
-    // Y座標が小さい順に並び替え
-    TArray<AActor*> SortedObjects = SelectedObjects;
-    SortedObjects.Sort([](const AActor& A, const AActor& B)
+    // 中心(平均座標)。何回実行しても変わらない基準
+    FVector Center = FVector::ZeroVector;
+    for (AActor* A : Sorted)
+    {
+        Center += A->GetActorLocation();
+    }
+    Center /= Num;
+
+    // 並べる軸の座標順。同値のときはもう一方の軸で決めて安定させる
+    Sorted.Sort([bAlongX](const AActor& A, const AActor& B)
         {
-            return A.GetActorLocation().Y < B.GetActorLocation().Y;
+            const FVector LA = A.GetActorLocation();
+            const FVector LB = B.GetActorLocation();
+            if (bAlongX)
+            {
+                if (LA.X != LB.X) return LA.X < LB.X;
+                return LA.Y < LB.Y;
+            }
+            if (LA.Y != LB.Y) return LA.Y < LB.Y;
+            return LA.X < LB.X;
         });
 
-    // 一番端(Yが最小)のオブジェクトを基準にする
-    FVector BaseLocation = SortedObjects[0]->GetActorLocation();
-
-    for (int32 i = 0; i < SortedObjects.Num(); i++)
+    // 逆方向のときは、並び順そのものを反転する
+    if (!bPositiveDirection)
     {
-        FVector NewLocation = BaseLocation;
-        NewLocation.Y += GridSnapSize * i;
+        Algo::Reverse(Sorted);
+    }
 
-        SortedObjects[i]->SetActorLocation(NewLocation);
+    // 各オブジェクトの「並べる軸方向の幅」と「ピボットから見た中心のズレ」を取得
+    TArray<float> Widths;
+    TArray<float> PivotToCenter;
+    for (AActor* A : Sorted)
+    {
+        FVector Origin, Extent;
+        A->GetActorBounds(false, Origin, Extent);
+
+        const float Width = (bAlongX ? Extent.X : Extent.Y) * 2.f;
+        const float OriginAxis = bAlongX ? Origin.X : Origin.Y;
+        const float PivotAxis = bAlongX ? A->GetActorLocation().X : A->GetActorLocation().Y;
+
+        Widths.Add(Width);
+        PivotToCenter.Add(OriginAxis - PivotAxis);
+    }
+
+    // 全体の長さ = 幅の合計 + 隙間の合計
+    float TotalLength = 0.f;
+    for (float W : Widths)
+    {
+        TotalLength += W;
+    }
+    TotalLength += GridSnapSize * (Num - 1);
+
+    // 全体の中心が Center に来るように、先頭の縁の位置を決める
+    const float CenterAxis = bAlongX ? Center.X : Center.Y;
+    float Cursor = CenterAxis - TotalLength * 0.5f;
+
+    for (int32 i = 0; i < Num; i++)
+    {
+        // このオブジェクトの「見た目の中心」を Cursor + 幅/2 に置く
+        const float DesiredCenterAxis = Cursor + Widths[i] * 0.5f;
+        // ピボット位置に換算(ピボットが中心からズレていても揃う)
+        const float NewPivotAxis = DesiredCenterAxis - PivotToCenter[i];
+
+        FVector NewLocation = Sorted[i]->GetActorLocation();
+        if (bAlongX)
+        {
+            NewLocation.X = NewPivotAxis;
+            NewLocation.Y = Center.Y;
+        }
+        else
+        {
+            NewLocation.Y = NewPivotAxis;
+            NewLocation.X = Center.X;
+        }
+
+        Sorted[i]->SetActorLocation(NewLocation);
+
+        Cursor += Widths[i] + GridSnapSize;
     }
 }
 
@@ -417,6 +474,7 @@ void AObjectPlacer::SetupInputComponent()
     InputComponent->BindAction("FlipObject", IE_Pressed, this, &AObjectPlacer::OnFlipObjectKeyPressed);
     InputComponent->BindAction("ArrangeObjects", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsKeyPressed);
     InputComponent->BindAction("ArrangeObjectsVertically", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsVerticallyKeyPressed);
+    InputComponent->BindAction("ArrangeObjectsVerticallyReverse", IE_Pressed, this, &AObjectPlacer::OnArrangeObjectsVerticallyReverseKeyPressed);
     InputComponent->BindAction("ToggleHumanStatus", IE_Pressed, this, &AObjectPlacer::OnToggleHumanStatusKeyPressed);
     InputComponent->BindAction("ReplaceObject", IE_Pressed, this, &AObjectPlacer::OnReplaceObjectKeyPressed);
     InputComponent->BindAction("ToggleLockLocation", IE_Pressed, this, &AObjectPlacer::OnToggleLockLocationKeyPressed);
@@ -813,7 +871,12 @@ void AObjectPlacer::OnArrangeObjectsKeyPressed()
 
 void AObjectPlacer::OnArrangeObjectsVerticallyKeyPressed()
 {
-    ArrangeSelectedObjectsVertically();
+    ArrangeSelectedObjectsVertically(true);
+}
+
+void AObjectPlacer::OnArrangeObjectsVerticallyReverseKeyPressed()
+{
+    ArrangeSelectedObjectsVertically(false);
 }
 
 void AObjectPlacer::OnToggleHumanStatusKeyPressed()
